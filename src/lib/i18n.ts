@@ -96,6 +96,13 @@ type Strings = {
   cancel: string;
   stepsTitle: string;
   steps: { title: string; text: string }[];
+  locFound: (accuracy: string) => string;
+  locApprox: (accuracy: string) => string;
+  locDenied: string;
+  locUnavailable: string;
+  locTimeout: string;
+  locUnsupported: string;
+  locYours: string;
 };
 
 export const UI: Record<Lang, Strings> = {
@@ -213,6 +220,16 @@ export const UI: Record<Lang, Strings> = {
       { title: "Tell us about your home", text: "Who lives there, how you travel, what you cook on. It takes under a minute." },
       { title: "Get a plan that fits", text: "The cleanest hours, steps ranked for your family, and what each one saves in PM2.5 and CO₂." },
     ],
+    locFound: (a) => `Location found, accurate to about ${a}. Air data comes from the stations nearest to you.`,
+    locApprox: (a) =>
+      `Your device shared only an approximate location (about ${a}). For a closer match, search your area by name.`,
+    locDenied:
+      "Location access is blocked for this site. Click the lock icon in the address bar and allow Location, or search for your city.",
+    locUnavailable:
+      "Your device could not work out where you are. Turn on Location in your device settings (on Windows: Settings, Privacy and security, Location; in Brave also allow Google location services under Settings, Privacy and security), or search for your city.",
+    locTimeout: "Finding your location took too long. Try again, or search for your city.",
+    locUnsupported: "Your browser cannot share its location. Search for your city instead.",
+    locYours: "Your location",
   },
   hi: {
     tagline: "आपके परिवार के लिए स्मॉग प्लान",
@@ -328,6 +345,16 @@ export const UI: Record<Lang, Strings> = {
       { title: "अपने घर के बारे में बताएँ", text: "घर में कौन रहता है, आप कैसे सफ़र करते हैं, खाना किस पर बनता है। एक मिनट से कम लगता है।" },
       { title: "अपने हिसाब का प्लान पाएँ", text: "सबसे साफ़ घंटे, आपके परिवार के लिए क्रम से कदम, और हर कदम से PM2.5 व CO₂ में कितनी बचत।" },
     ],
+    locFound: (a) => `लोकेशन मिल गई, लगभग ${a} तक सटीक। हवा का डेटा आपके सबसे नज़दीकी स्टेशनों से आता है।`,
+    locApprox: (a) =>
+      `आपके डिवाइस ने सिर्फ़ अनुमानित लोकेशन दी (लगभग ${a})। बेहतर नतीजे के लिए अपने इलाक़े का नाम खोजें।`,
+    locDenied:
+      "इस साइट के लिए लोकेशन की अनुमति बंद है। एड्रेस बार में ताले के निशान पर क्लिक करके Location की अनुमति दें, या अपना शहर खोजें।",
+    locUnavailable:
+      "आपका डिवाइस आपकी लोकेशन नहीं ढूँढ पाया। डिवाइस की सेटिंग में Location चालू करें (Windows: Settings, Privacy and security, Location; Brave में Settings, Privacy and security के अंदर Google location services भी चालू करें), या अपना शहर खोजें।",
+    locTimeout: "लोकेशन ढूँढने में बहुत देर लगी। फिर कोशिश करें, या अपना शहर खोजें।",
+    locUnsupported: "आपका ब्राउज़र लोकेशन साझा नहीं कर सकता। अपना शहर खोजें।",
+    locYours: "आपकी लोकेशन",
   },
 };
 

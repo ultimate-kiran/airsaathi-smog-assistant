@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { categoryByKey, categoryFor } from "@/lib/aqi";
+import { APPROXIMATE_OVER_M, GeoError, formatAccuracy, locate as getFix, round2 } from "@/lib/geo";
 import { SAMPLE_PLACES, UI } from "@/lib/i18n";
 import type { Lang, PlanView } from "@/lib/types";
 import Gauge from "./Gauge";
@@ -64,27 +65,31 @@ function PlaceSearch({ lang, onPick }: { lang: Lang; onPick: (p: Place) => void 
     onPick(p);
   }
 
-  function locate() {
-    if (!("geolocation" in navigator)) {
-      setNote("Your browser cannot share its location. Search for your city instead.");
-      return;
-    }
+  async function locate() {
     setBusy(true);
     setNote(t.locating);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setBusy(false);
-        setNote("");
-        const lat = Math.round(pos.coords.latitude * 100) / 100;
-        const lon = Math.round(pos.coords.longitude * 100) / 100;
-        choose({ name: `${lat}, ${lon}`, short: lang === "hi" ? "आपकी लोकेशन" : "Your location", lat, lon });
-      },
-      () => {
-        setBusy(false);
-        setNote("We could not get your location. Search for your city instead.");
-      },
-      { timeout: 10000, maximumAge: 600000 },
-    );
+    try {
+      const fix = await getFix(typeof navigator === "undefined" ? undefined : navigator.geolocation);
+      const lat = round2(fix.lat);
+      const lon = round2(fix.lon);
+      choose({ name: `${lat}, ${lon}`, short: t.locYours, lat, lon });
+      // choose() clears the note, so say how good the fix was afterwards.
+      const acc = formatAccuracy(fix.accuracy);
+      setNote(fix.accuracy > APPROXIMATE_OVER_M ? t.locApprox(acc) : t.locFound(acc));
+    } catch (e) {
+      const kind = e instanceof GeoError ? e.kind : "unavailable";
+      setNote(
+        kind === "denied"
+          ? t.locDenied
+          : kind === "timeout"
+            ? t.locTimeout
+            : kind === "unsupported"
+              ? t.locUnsupported
+              : t.locUnavailable,
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -106,7 +111,7 @@ function PlaceSearch({ lang, onPick }: { lang: Lang; onPick: (p: Place) => void 
             aria-controls={`${id}-list`}
           />
         </div>
-        <button type="button" className="btn btn--soft" onClick={locate} disabled={busy}>
+        <button type="button" className="btn btn--soft" onClick={() => void locate()} disabled={busy}>
           <Icon name="pin" size={18} />
           {t.useLocation}
         </button>
