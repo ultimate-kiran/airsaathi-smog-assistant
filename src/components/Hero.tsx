@@ -4,6 +4,8 @@ import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { categoryByKey, categoryFor } from "@/lib/aqi";
 import { SAMPLE_PLACES, UI } from "@/lib/i18n";
 import type { Lang, PlanView } from "@/lib/types";
+import Gauge from "./Gauge";
+import Icon from "./Icon";
 import Skyline, { SkylineHaze } from "./Skyline";
 
 export interface Place {
@@ -90,46 +92,56 @@ function PlaceSearch({ lang, onPick }: { lang: Lang; onPick: (p: Place) => void 
       <label htmlFor={id} className="search__label">
         {t.searchLabel}
       </label>
-      <div className="search__row">
-        <input
-          id={id}
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={t.searchPlaceholder}
-          autoComplete="off"
-          maxLength={60}
-          aria-controls={`${id}-list`}
-        />
-        <button type="button" className="btn btn--quiet" onClick={locate} disabled={busy}>
+      <div className="search__box">
+        <div className="search__field">
+          <Icon name="search" />
+          <input
+            id={id}
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t.searchPlaceholder}
+            autoComplete="off"
+            maxLength={60}
+            aria-controls={`${id}-list`}
+          />
+        </div>
+        <button type="button" className="btn btn--soft" onClick={locate} disabled={busy}>
+          <Icon name="pin" size={18} />
           {t.useLocation}
         </button>
+        <div id={`${id}-list`} className="search__pop" aria-live="polite">
+          {results && results.length > 0 && (
+            <ul className="search__list">
+              {results.map((p) => (
+                <li key={`${p.lat},${p.lon}`}>
+                  <button type="button" onClick={() => choose(p)}>
+                    <Icon name="pin" size={16} />
+                    {p.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
-      <div id={`${id}-list`} aria-live="polite">
-        {results && results.length > 0 && (
-          <ul className="search__list">
-            {results.map((p) => (
-              <li key={`${p.lat},${p.lon}`}>
-                <button type="button" onClick={() => choose(p)}>
-                  {p.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {results && results.length === 0 && <p className="search__note">{t.noPlaces}</p>}
-        {note && <p className="search__note">{note}</p>}
-      </div>
-      <p className="search__try">
+      {results && results.length === 0 && <p className="search__note">{t.noPlaces}</p>}
+      {note && <p className="search__note">{note}</p>}
+      <div className="search__try">
         <span>{t.tryThese}</span>
         {SAMPLE_PLACES.map((p) => (
-          <button key={p.short} type="button" className="chip" onClick={() => choose(p)}>
+          <button key={p.short} type="button" className="chip chip--glass" onClick={() => choose(p)}>
             {p.short}
           </button>
         ))}
-      </p>
+      </div>
     </div>
   );
+}
+
+/** "Know today's air. Know what to do about it." reads as two short lines. */
+function lines(text: string): string[] {
+  return text.split(/(?<=[.।])\s+/);
 }
 
 export default function Hero({ lang, plan, placeName, status, error, onPick, onRetry }: Props) {
@@ -137,74 +149,81 @@ export default function Hero({ lang, plan, placeName, status, error, onPick, onR
   const aqi = plan?.aqi.value ?? 55;
   const cat = plan ? categoryByKey(plan.aqi.category) : categoryFor(55);
   const style = { "--tint": cat.color } as CSSProperties;
+  const showReading = !!plan && status !== "error";
 
   return (
     <section className="hero" style={style} aria-labelledby="hero-title">
-      <Skyline aqi={plan ? aqi : 55} />
-      <SkylineHaze aqi={plan ? aqi : 55} />
+      <Skyline aqi={aqi} />
+      <SkylineHaze aqi={aqi} />
       <div className="hero__inner">
         <PlaceSearch lang={lang} onPick={onPick} />
 
         {status === "loading" && (
           <p className="hero__status" role="status">
+            <span className="dots" aria-hidden="true" />
             {t.checking(placeName ?? "…")}
           </p>
         )}
 
         {status === "error" && (
           <div className="hero__error" role="alert">
+            <Icon name="alert" />
             <p>{error}</p>
-            <button type="button" className="btn" onClick={onRetry}>
+            <button type="button" className="btn btn--soft" onClick={onRetry}>
               {t.retry}
             </button>
           </div>
         )}
 
-        {plan && status !== "error" ? (
-          <div className="hero__reading">
-            <p className="hero__place">{plan.place}</p>
-            <div className="hero__numbers">
-              <span className="hero__aqi">
-                <span className="sr-only">{t.aqiNow} </span>
-                {plan.aqi.value}
-              </span>
-              <div>
-                <span className="pill" style={{ background: cat.color, color: cat.ink }}>
-                  {cat.label[lang]}
-                </span>
-                <p className="hero__meta">
-                  {t.aqiNow} · PM2.5 {plan.aqi.pm25} µg/m³
-                </p>
-                <p className="hero__meta">
+        {showReading && plan ? (
+          <div className="reading">
+            <div className="reading__text">
+              <p className="reading__place">
+                <Icon name="pin" size={18} />
+                {plan.place}
+              </p>
+              <h1 id="hero-title" className="hero__title hero__title--sm">
+                {plan.ai.headline}
+              </h1>
+              <p className="reading__summary">{plan.ai.summary}</p>
+              <p className="reading__cig">{t.cigarettes(plan.cigarettes)}</p>
+              <ul className="facts">
+                <li className="fact">
+                  <Icon name="pin" size={16} />
                   {plan.source.kind === "station"
                     ? plan.source.count > 1
                       ? t.srcStations(plan.source.count, plan.source.km)
                       : t.srcStation(plan.source.name, plan.source.km)
                     : t.srcModel}
-                </p>
+                </li>
                 {plan.source.kind === "station" && plan.source.uncertain && (
-                  <p className="hero__meta hero__meta--warn">{t.srcUncertain}</p>
+                  <li className="fact fact--warn">
+                    <Icon name="alert" size={16} />
+                    {t.srcUncertain}
+                  </li>
                 )}
-              </div>
+              </ul>
             </div>
-            <h1 id="hero-title" className="hero__headline">
-              {plan.ai.headline}
-            </h1>
-            <p className="hero__summary">{plan.ai.summary}</p>
-            <p className="hero__cig">{t.cigarettes(plan.cigarettes)}</p>
-            <a className="hero__jump" href="#household">
-              {t.editHousehold}
-            </a>
+            <div className="reading__dial">
+              <p className="reading__dial-title">{t.aqiNow}</p>
+              <Gauge aqi={plan.aqi.value} label={cat.label[lang]} />
+              <span className="pill" style={{ background: cat.color, color: cat.ink }}>
+                {cat.label[lang]}
+              </span>
+              <p className="reading__pm">PM2.5 {plan.aqi.pm25} µg/m³</p>
+            </div>
           </div>
         ) : (
-          status !== "loading" && (
-            <div className="hero__intro">
-              <h1 id="hero-title" className="hero__headline">
-                {t.heroTitle}
-              </h1>
-              <p className="hero__summary">{t.heroLead}</p>
-            </div>
-          )
+          <div className="hero__intro">
+            <h1 id="hero-title" className="hero__title">
+              {lines(t.heroTitle).map((l) => (
+                <span key={l} className="hero__line">
+                  {l}
+                </span>
+              ))}
+            </h1>
+            <p className="hero__lead">{t.heroLead}</p>
+          </div>
         )}
       </div>
     </section>

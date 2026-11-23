@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { UI } from "@/lib/i18n";
 import type { Profile } from "@/lib/types";
+import Icon from "./Icon";
 
 export default function AskBox({ profile, enabled }: { profile: Profile; enabled: boolean }) {
   const t = UI[profile.lang];
@@ -35,7 +36,7 @@ export default function AskBox({ profile, enabled }: { profile: Profile; enabled
   }
 
   return (
-    <section className="block ask" aria-labelledby="ask-title">
+    <section className="panel ask" aria-labelledby="ask-title">
       <h2 id="ask-title">{t.askTitle}</h2>
       <p className="muted">{t.askLead}</p>
       <form
@@ -58,9 +59,10 @@ export default function AskBox({ profile, enabled }: { profile: Profile; enabled
         />
         <button className="btn btn--primary" type="submit" disabled={!enabled || busy || q.trim().length < 2}>
           {busy ? t.asking : t.askButton}
+          {!busy && <Icon name="send" size={18} />}
         </button>
       </form>
-      <p className="ask__chips">
+      <div className="ask__chips">
         {t.suggestions.map((s) => (
           <button
             key={s}
@@ -75,7 +77,7 @@ export default function AskBox({ profile, enabled }: { profile: Profile; enabled
             {s}
           </button>
         ))}
-      </p>
+      </div>
       <div aria-live="polite">
         {error && <p className="error">{error}</p>}
         {answer && <p className="ask__answer">{answer}</p>}

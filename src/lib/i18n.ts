@@ -89,6 +89,13 @@ type Strings = {
   language: string;
   pickPlaceFirst: string;
   editHousehold: string;
+  buildPlan: string;
+  useTypical: string;
+  formLead: string;
+  healthPrompt: string;
+  cancel: string;
+  stepsTitle: string;
+  steps: { title: string; text: string }[];
 };
 
 export const UI: Record<Lang, Strings> = {
@@ -195,6 +202,17 @@ export const UI: Record<Lang, Strings> = {
     language: "Language",
     pickPlaceFirst: "Choose a place first.",
     editHousehold: "Change household details",
+    buildPlan: "Build my plan",
+    useTypical: "Or use a typical household",
+    formLead: "A minute of answers makes the plan fit your home.",
+    healthPrompt: "Does anyone here live with:",
+    cancel: "Cancel",
+    stepsTitle: "How it works",
+    steps: [
+      { title: "Pick your place", text: "Search your city or use your location to see how clean the air is right now." },
+      { title: "Tell us about your home", text: "Who lives there, how you travel, what you cook on. It takes under a minute." },
+      { title: "Get a plan that fits", text: "The cleanest hours, steps ranked for your family, and what each one saves in PM2.5 and CO₂." },
+    ],
   },
   hi: {
     tagline: "आपके परिवार के लिए स्मॉग प्लान",
@@ -299,6 +317,17 @@ export const UI: Record<Lang, Strings> = {
     language: "भाषा",
     pickPlaceFirst: "पहले जगह चुनें।",
     editHousehold: "परिवार की जानकारी बदलें",
+    buildPlan: "मेरा प्लान बनाएँ",
+    useTypical: "या सामान्य परिवार का प्लान देखें",
+    formLead: "एक मिनट के जवाब प्लान को आपके घर के हिसाब से बनाते हैं।",
+    healthPrompt: "क्या घर में किसी को है:",
+    cancel: "रद्द करें",
+    stepsTitle: "यह कैसे काम करता है",
+    steps: [
+      { title: "अपनी जगह चुनें", text: "अपना शहर खोजें या लोकेशन इस्तेमाल करें और देखें कि अभी हवा कितनी साफ़ है।" },
+      { title: "अपने घर के बारे में बताएँ", text: "घर में कौन रहता है, आप कैसे सफ़र करते हैं, खाना किस पर बनता है। एक मिनट से कम लगता है।" },
+      { title: "अपने हिसाब का प्लान पाएँ", text: "सबसे साफ़ घंटे, आपके परिवार के लिए क्रम से कदम, और हर कदम से PM2.5 व CO₂ में कितनी बचत।" },
+    ],
   },
 };
 

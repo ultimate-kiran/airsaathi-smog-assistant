@@ -1,11 +1,13 @@
 import { categoryByKey } from "@/lib/aqi";
 import { UI } from "@/lib/i18n";
 import type { Lang, PlanResponse } from "@/lib/types";
+import Icon from "./Icon";
 
 export default function HourStrip({ plan, lang }: { plan: PlanResponse; lang: Lang }) {
   const t = UI[lang];
   const { hours, bestWindow, avoid } = plan;
-  const top = Math.max(200, ...hours.map((h) => h.aqi));
+  // Scale to the day's own peak (never below 100) so a clean day still shows its shape.
+  const top = Math.max(100, ...hours.map((h) => h.aqi));
 
   const avoidSet = new Set<number>();
   if (avoid) {
@@ -24,14 +26,41 @@ export default function HourStrip({ plan, lang }: { plan: PlanResponse; lang: La
   const bestIdx = bestWindow ? hours.findIndex((h) => h.label === bestWindow.start) : -1;
 
   return (
-    <section aria-labelledby="hours-title" className="block">
-      <h2 id="hours-title">{t.hourlyTitle}</h2>
-      <p className="muted">{t.hourlyHint}</p>
+    <section aria-labelledby="hours-title" className="panel hours">
+      <div className="hours__head">
+        <div>
+          <h2 id="hours-title">{t.hourlyTitle}</h2>
+          <p className="muted">{t.hourlyHint}</p>
+        </div>
+        <dl className="windows">
+          {bestWindow && (
+            <div className="windows__best">
+              <dt>
+                <Icon name="leaf" size={16} />
+                {t.cleanest}
+              </dt>
+              <dd>
+                {bestWindow.start}–{bestWindow.end}
+                <span> · AQI ~{bestWindow.aqi}</span>
+              </dd>
+            </div>
+          )}
+          {avoid && (
+            <div className="windows__worst">
+              <dt>
+                <Icon name="alert" size={16} />
+                {t.worst}
+              </dt>
+              <dd>{avoid.allDay ? t.allDay : `${avoid.start}–${avoid.end}`}</dd>
+            </div>
+          )}
+        </dl>
+      </div>
 
       <ul className="strip" aria-label={t.hourlyTitle}>
         {hours.map((h, i) => {
           const cat = categoryByKey(h.category);
-          const height = Math.max(8, Math.round((h.aqi / top) * 100));
+          const height = Math.max(6, Math.round((h.aqi / top) * 100));
           const flags = [i === bestIdx ? t.cleanest : "", avoidSet.has(i) ? t.worst : ""].filter(Boolean).join(", ");
           return (
             <li
@@ -43,7 +72,7 @@ export default function HourStrip({ plan, lang }: { plan: PlanResponse; lang: La
                 {flags ? `, ${flags}` : ""}
               </span>
               <span className="strip__val" aria-hidden="true">
-                {h.aqi}
+                {i % 3 === 0 || i === bestIdx ? h.aqi : ""}
               </span>
               <span
                 className="strip__bar"
@@ -58,24 +87,6 @@ export default function HourStrip({ plan, lang }: { plan: PlanResponse; lang: La
           );
         })}
       </ul>
-
-      <dl className="windows">
-        {bestWindow && (
-          <div>
-            <dt>{t.cleanest}</dt>
-            <dd>
-              {bestWindow.start}–{bestWindow.end}
-              <span className="muted"> · AQI ~{bestWindow.aqi}</span>
-            </dd>
-          </div>
-        )}
-        {avoid && (
-          <div>
-            <dt>{t.worst}</dt>
-            <dd>{avoid.allDay ? t.allDay : `${avoid.start}–${avoid.end}`}</dd>
-          </div>
-        )}
-      </dl>
     </section>
   );
 }

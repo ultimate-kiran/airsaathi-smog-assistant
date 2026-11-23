@@ -17,7 +17,7 @@ export default function Tracker({ log, lang }: { log: DoneLog; lang: Lang }) {
   const cig = Math.round((ugToday / INHALED_UG_PER_CIGARETTE) * 10) / 10;
 
   return (
-    <section className="block tracker" aria-labelledby="tracker-title">
+    <section className="panel tracker" aria-labelledby="tracker-title">
       <h2 id="tracker-title">{t.trackerTitle}</h2>
       {!any ? (
         <p className="muted">{t.trackerEmpty}</p>
