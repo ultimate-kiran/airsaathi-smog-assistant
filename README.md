@@ -63,7 +63,7 @@ Exposure maths: `inhaled µg = PM2.5 (µg/m³) × breathing volume (m³/h) × ho
 npm install
 cp .env.example .env.local   # optional: add OPENAI_API_KEY or GEMINI_API_KEY
 npm run dev                  # http://localhost:3000
-npm run check                # lint + typecheck + 108 tests
+npm run check                # lint + typecheck + 120 tests
 npm run build
 ```
 
@@ -89,7 +89,7 @@ The project's `.npmrc` disables dependency install scripts. GitHub Actions (`.gi
 ## Security and privacy
 
 - All external input is validated with zod at the API boundary (shape, ranges, lengths); bodies are size-capped.
-- The server calls only fixed hosts (Open-Meteo, OpenAQ, WAQI, OpenAI, Google). Coordinates are rounded to about 1 km before leaving the server.
+- The server calls only fixed hosts (Open-Meteo, OpenAQ, WAQI, OpenAI, Google, and OpenStreetMap Nominatim to name the place after "Use my location"). Coordinates are rounded to about 1 km before leaving the server.
 - The AI model gets coarse household flags and the city name only: no personal names, no coordinates, no free text except the user's question, which is passed as quoted data.
 - API keys are read from the environment on the server and sent in a header, never in a URL or to the browser.
 - Model output is parsed against a schema and rendered as text, never as HTML.
@@ -99,7 +99,7 @@ The project's `.npmrc` disables dependency install scripts. GitHub Actions (`.gi
 
 ## Testing
 
-108 tests (Vitest) cover the AQI maths and breakpoints, exposure and impact calculations, plan logic for different households, English and Hindi output, the API routes (validation, size limits, rate limiting, upstream failure, coordinate rounding), the AI layer for both OpenAI and Gemini (provider choice, request format, schema validation, invented-number guard, prompt-injection framing, no coordinates sent, fallbacks), the station-data sources (OpenAQ freshness, units, plausibility, median, low-cost vs reference, uncertainty flag; WAQI conversion; source priority and fallbacks) and local storage handling. The AI providers and data sources are mocked, so the suite runs offline.
+120 tests (Vitest) cover the AQI maths and breakpoints, exposure and impact calculations, plan logic for different households, English and Hindi output, the API routes (validation, size limits, rate limiting, upstream failure, coordinate rounding), the AI layer for both OpenAI and Gemini (provider choice, request format, schema validation, invented-number guard, prompt-injection framing, no coordinates sent, fallbacks), the station-data sources (OpenAQ freshness, units, plausibility, median, low-cost vs reference, uncertainty flag; WAQI conversion; source priority and fallbacks) and local storage handling. The AI providers and data sources are mocked, so the suite runs offline.
 
 ## Accessibility
 
@@ -126,7 +126,7 @@ src/lib/airsource.ts  picks the air source: OpenAQ, then WAQI, then model
 src/lib/openaq.ts     OpenAQ v3 stations: freshness, units, median, uncertainty
 src/lib/station.ts    WAQI station readings and applying a station to the 24 h curve
 src/lib/ai.ts         LLM layer: OpenAI or Gemini, prompts, validation, number guard
-src/app/api/*         plan, ask, geocode routes
+src/app/api/*         plan, ask, geocode, reverse (place name) routes
 src/components/*      UI (skyline hero, hour strip, actions, tracker, ask)
 tests/                maths, plan logic, API routes, AI guard, storage
 ```

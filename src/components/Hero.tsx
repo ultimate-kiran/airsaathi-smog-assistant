@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { categoryByKey, categoryFor } from "@/lib/aqi";
-import { APPROXIMATE_OVER_M, GeoError, formatAccuracy, locate as getFix, round2 } from "@/lib/geo";
+import { APPROXIMATE_OVER_M, GeoError, formatAccuracy, locate as getFix, nameFor, round2 } from "@/lib/geo";
 import { SAMPLE_PLACES, UI } from "@/lib/i18n";
 import type { Lang, PlanView } from "@/lib/types";
 import Gauge from "./Gauge";
@@ -72,7 +72,8 @@ function PlaceSearch({ lang, onPick }: { lang: Lang; onPick: (p: Place) => void 
       const fix = await getFix(typeof navigator === "undefined" ? undefined : navigator.geolocation);
       const lat = round2(fix.lat);
       const lon = round2(fix.lon);
-      choose({ name: `${lat}, ${lon}`, short: t.locYours, lat, lon });
+      const named = await nameFor(lat, lon, lang);
+      choose({ name: named?.name ?? `${lat}, ${lon}`, short: named?.short ?? t.locYours, lat, lon });
       // choose() clears the note, so say how good the fix was afterwards.
       const acc = formatAccuracy(fix.accuracy);
       setNote(fix.accuracy > APPROXIMATE_OVER_M ? t.locApprox(acc) : t.locFound(acc));
