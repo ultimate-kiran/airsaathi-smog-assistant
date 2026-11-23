@@ -1,0 +1,30 @@
+{
+  "name": "airsaathi-smog-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GenAI assistant that helps families navigate winter smog with low-emission routines, indoor air hacks and quantified impact.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.6",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.1"
+  }
+}
