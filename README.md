@@ -4,6 +4,8 @@ PromptWars Virtual, Challenge 06. A GenAI assistant that turns today's air quali
 
 Built with Google Antigravity.
 
+**Live demo:** https://airsaathi-smog-assistant.vercel.app
+
 ## Chosen vertical and user
 
 **Challenge 06: helping families and communities handle severe winter smog in India.** The user is a household in an Indian city (a parent with children, older relatives, someone with asthma) who wants to know today, in their own place and routine, what to do and why it helps. The app asks about the household, commute, cooking fuel, heating, purifier, windows and exercise habits, then builds a low-emission, indoor-air and sustainable-alternatives plan from that context.
