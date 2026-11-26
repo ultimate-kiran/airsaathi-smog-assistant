@@ -1,45 +1,27 @@
-import { formatRange } from "../format";
 import type { ActionGroup, ActionOut, Bilingual, HourRange, Impact } from "../types";
+import type { ActionText } from "./copy";
 import type { Ctx } from "./context";
+import { priorityOf, type ActionId } from "./priorities";
 import type { Window } from "./windows";
 
 /**
  * A rule looks at the household and the day's air and either proposes one action or stays silent.
+ * Rules decide and compute; their words come from copy.ts and their rank from priorities.ts.
  * Adding advice means adding a rule to rules/index.ts; nothing else changes.
  */
 export type Rule = (c: Ctx) => ActionOut | null;
 
-export const L = (en: string, hi: string): Bilingual => ({ en, hi });
-export const r0 = (n: number) => Math.round(n);
-export const pct = (fraction: number) => Math.round(fraction * 100);
-
-/** The same hour range, formatted for each language, for use inside bilingual text. */
-export const range = (w: HourRange): Bilingual => ({ en: formatRange(w, "en"), hi: formatRange(w, "hi") });
-
-export const WHO = {
-  everyone: L("Everyone", "सभी"),
-  kids: L("Children", "बच्चे"),
-  elders: L("Older adults", "बुज़ुर्ग"),
-  sensitive: L("Anyone with asthma, heart disease or pregnancy", "दमा, दिल की बीमारी या गर्भावस्था वाले"),
-  commuter: L("Commuter", "आने-जाने वाले"),
-  exerciser: L("Whoever exercises outdoors", "बाहर कसरत करने वाले"),
-  cook: L("Whoever cooks", "खाना बनाने वाले"),
-};
-
 export interface ActionSpec {
-  id: string;
+  id: ActionId;
   group: ActionGroup;
   exclusive?: string;
-  priority: number;
-  title: Bilingual;
-  why: Bilingual;
+  text: ActionText;
   impact?: Impact;
-  assumption?: Bilingual;
   window?: HourRange;
   forWhom: Bilingual[];
 }
 
-/** Turns a bilingual spec into the action for the reader's language. */
+/** Turns a spec into the action for the reader's language. */
 export function makeAction(c: Ctx, o: ActionSpec): ActionOut {
   const lang = c.lang;
   return {
@@ -47,14 +29,21 @@ export function makeAction(c: Ctx, o: ActionSpec): ActionOut {
     group: o.group,
     exclusive: o.exclusive,
     counted: true, // settled by markCounted once all actions are ranked
-    priority: Math.round(Math.min(100, o.priority)),
-    title: o.title[lang],
-    why: o.why[lang],
+    priority: priorityOf(o.id, c.prot),
+    title: o.text.title[lang],
+    why: o.text.why[lang],
     impact: o.impact ?? {},
-    assumption: o.assumption ? o.assumption[lang] : "",
+    assumption: o.text.assumption ? o.text.assumption[lang] : "",
     window: o.window ? { start: o.window.start, end: o.window.end } : undefined,
     forWhom: o.forWhom.map((w) => w[lang]),
   };
+}
+
+/** What the indoor alternative is compared with. */
+export interface IndoorComparison {
+  bestAqi: number;
+  outdoor: number;
+  inside: number;
 }
 
 /**
@@ -73,7 +62,7 @@ export interface OutdoorActivity {
   /** PM2.5 at the time people usually do it, for the "versus" comparison */
   usualPm25: number;
   window: (best: Window, avoidedUg: number) => ActionSpec;
-  indoors: (outdoorPm25: number, indoorPm25: number, bestAqi: number, avoidedUg: number) => ActionSpec;
+  indoors: (cmp: IndoorComparison, avoidedUg: number) => ActionSpec;
 }
 
 export function outdoorOrIndoors(c: Ctx, a: OutdoorActivity): ActionOut {
@@ -84,5 +73,5 @@ export function outdoorOrIndoors(c: Ctx, a: OutdoorActivity): ActionOut {
   const outdoor = a.best ? a.best.avgPm25 : c.pm25;
   const inside = c.indoor(outdoor);
   const avoided = Math.max(0, (outdoor - inside) * a.vent * a.hours);
-  return makeAction(c, a.indoors(outdoor, inside, a.best ? a.best.aqi : c.aqi, avoided));
+  return makeAction(c, a.indoors({ bestAqi: a.best ? a.best.aqi : c.aqi, outdoor, inside }, avoided));
 }

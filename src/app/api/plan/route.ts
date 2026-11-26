@@ -1,6 +1,6 @@
 import { aiEnabled } from "@/lib/ai";
 import { ok, rateLimitOrThrow, readJson, route } from "@/lib/http";
-import { getPlan } from "@/lib/planService";
+import { getPlan } from "@/lib/container";
 import { ProfileSchema } from "@/lib/types";
 
 export const maxDuration = 30;

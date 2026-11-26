@@ -1,8 +1,20 @@
-import { ERROR_CODES, type AiExplanation, type ErrorCode, type Lang, type PlanView, type Profile } from "../types";
+import { z } from "zod";
+import {
+  AiExplanationSchema,
+  AskReplySchema,
+  ERROR_CODES,
+  PlaceSchema,
+  PlanViewSchema,
+  type ErrorCode,
+  type Lang,
+  type Place,
+  type Profile,
+} from "../types";
 
 /**
- * The browser's only door to the API. Every call returns typed data or throws ClientError with a
- * stable code the UI translates. Aborted requests rethrow the AbortError untouched.
+ * The browser's only door to the API. Every reply is checked against the same schema the server's
+ * types come from; anything else throws ClientError with a stable code the UI translates.
+ * Aborted requests rethrow the AbortError untouched.
  */
 export class ClientError extends Error {
   constructor(readonly code: ErrorCode) {
@@ -16,7 +28,7 @@ export const isAbort = (e: unknown) => e instanceof DOMException && e.name === "
 const asCode = (x: unknown): ErrorCode =>
   typeof x === "string" && (ERROR_CODES as readonly string[]).includes(x) ? (x as ErrorCode) : "network";
 
-async function request<T>(path: string, init: RequestInit): Promise<T> {
+async function request<S extends z.ZodType>(schema: S, path: string, init: RequestInit): Promise<z.infer<S>> {
   let res: Response;
   try {
     res = await fetch(path, init);
@@ -26,26 +38,24 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   }
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new ClientError(asCode(data?.code));
-  return data as T;
+  const parsed = schema.safeParse(data);
+  if (!parsed.success) throw new ClientError("internal");
+  return parsed.data;
 }
 
-const post = <T>(path: string, body: unknown, signal?: AbortSignal) =>
-  request<T>(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
+const post = <S extends z.ZodType>(schema: S, path: string, body: unknown, signal?: AbortSignal) =>
+  request(schema, path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
 
-export interface PlaceResult {
-  name: string;
-  short: string;
-  lat: number;
-  lon: number;
-}
+export type PlaceResult = Place;
 
 export const api = {
-  plan: (profile: Profile, signal?: AbortSignal) => post<PlanView>("/api/plan", profile, signal),
-  explain: (profile: Profile, signal?: AbortSignal) => post<AiExplanation>("/api/explain", profile, signal),
+  plan: (profile: Profile, signal?: AbortSignal) => post(PlanViewSchema, "/api/plan", profile, signal),
+  explain: (profile: Profile, fetchedAt: string, signal?: AbortSignal) =>
+    post(AiExplanationSchema, "/api/explain", { profile, fetchedAt }, signal),
   ask: (question: string, profile: Profile, signal?: AbortSignal) =>
-    post<{ answer: string; source: "ai" | "rules" }>("/api/ask", { question, profile }, signal),
+    post(AskReplySchema, "/api/ask", { question, profile }, signal),
   search: (q: string, signal?: AbortSignal) =>
-    request<{ places: PlaceResult[] }>(`/api/geocode?q=${encodeURIComponent(q)}`, { signal }).then((d) => d.places),
+    request(z.object({ places: z.array(PlaceSchema) }), `/api/geocode?q=${encodeURIComponent(q)}`, { signal }).then((d) => d.places),
   reverse: (lat: number, lon: number, lang: Lang, signal?: AbortSignal) =>
-    request<{ place: PlaceResult }>(`/api/reverse?lat=${lat}&lon=${lon}&lang=${lang}`, { signal }).then((d) => d.place),
+    request(z.object({ place: PlaceSchema }), `/api/reverse?lat=${lat}&lon=${lon}&lang=${lang}`, { signal }).then((d) => d.place),
 };

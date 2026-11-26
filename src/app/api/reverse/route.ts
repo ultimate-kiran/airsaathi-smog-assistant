@@ -1,6 +1,7 @@
 import { AppError } from "@/lib/errors";
 import { ok, rateLimitOrThrow, route } from "@/lib/http";
-import { inIndia, reversePlace } from "@/lib/places";
+import { places } from "@/lib/container";
+import { inIndia } from "@/lib/places";
 
 /**
  * Turns coordinates into a place name ("Raisina Hill, New Delhi") so "Use my location" can show
@@ -13,7 +14,7 @@ export const GET = route("reverse", async (req) => {
   const lat = Number(sp.get("lat"));
   const lon = Number(sp.get("lon"));
   if (!sp.get("lat") || !sp.get("lon") || !inIndia(lat, lon)) throw new AppError("outside_india");
-  const place = await reversePlace(lat, lon, sp.get("lang") === "hi" ? "hi" : "en");
+  const place = await places.reverse(lat, lon, sp.get("lang") === "hi" ? "hi" : "en");
   if (!place) throw new AppError("not_found");
   return ok({ place });
 });

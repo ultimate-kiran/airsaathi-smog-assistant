@@ -56,7 +56,7 @@ profile + location ─► air data (src/lib/airsource.ts):
    against the context · the page keeps the rule text on failure
 ```
 
-The plan and the AI text are two requests, so nobody waits for the model to see their plan: the AI headline and notes replace the rule text a moment later.
+The plan and the AI text are two requests, so nobody waits for the model to see their plan: the AI headline and notes replace the rule text a moment later. The page sends back the time of the air reading its plan used, and the server only explains that same reading (otherwise it answers 409 and the page reloads the plan), so the AI text always describes the numbers on screen.
 
 The model never calculates. It receives a shortlist of actions with their figures and writes the plain-language briefing and per-household notes. Any output that contains a large number not present in its context is discarded. With no API key, or if the provider fails, the app shows the rules-based text and everything else still works.
 
@@ -101,7 +101,7 @@ All configuration is read and validated in `src/lib/env.ts`; an invalid value is
 - The AI model gets coarse household flags and the city name only: no personal names, no coordinates, no free text except the user's question, which is passed as quoted data.
 - API keys are read from the environment on the server and sent in a header, never in a URL or to the browser.
 - Model output is parsed against a schema and rendered as text, never as HTML.
-- Rate limiting sits behind one interface (`src/lib/ratelimit.ts`): shared Redis counters when Upstash is configured, per-instance memory otherwise, falling back to memory if Redis is unreachable. The client IP comes from the platform's `x-real-ip`, not from a client-controlled header.
+- Rate limiting (sliding window) sits behind one interface (`src/lib/ratelimit.ts`): shared Redis counters when Upstash is configured, per-instance memory otherwise, falling back to memory if Redis is unreachable. The client IP comes from the platform's `x-real-ip`, not from a client-controlled header.
 - Pages get a strict Content Security Policy with a fresh nonce per request (`src/proxy.ts`): only our own scripts run. API replies get `default-src 'none'`. Other security headers are in `next.config.ts`.
 - Every API reply carries an `x-request-id`, and logs are one-line JSON events with no personal data. Errors return a stable `code` and no internals.
 - Nothing is stored server-side. Profile and progress live in `localStorage`.
@@ -123,7 +123,7 @@ All configuration is read and validated in `src/lib/env.ts`; an invalid value is
 - Without station keys, or where no station is nearby, the air data is a model estimate on a roughly 40 km grid and can differ from local monitors. Station coverage is uneven: Delhi, Jaipur and Chennai have several stations within 11 km, while Kochi has one fresh reference monitor (Eloor, about 16 km away) and a low-cost sensor that reads several times higher, so Kochi is shown as "approximate".
 - OpenAQ readings can lag by one to three hours. WAQI values arrive as US AQI sub-indices and are converted back to µg/m³; against OpenAQ at 11 paired stations that conversion averaged about 13% error, so treat WAQI-derived PM2.5 as roughly ±15%.
 - Estimates for wood and dung burning are indicative; real indoor concentrations vary widely.
-- Caches (air readings per ~1 km cell and AI text, 10 minutes) live in each server instance. A shared cache (Redis) would let instances share them; the upstream fetches are also cached by Next.js.
+- Caches (air readings per ~1 km cell and AI text, 10 minutes) live in each server instance. The services take their collaborators as arguments (`src/lib/container.ts` wires them), so a shared cache can be swapped in without touching the routes; the upstream fetches are also cached by Next.js.
 - Browser end-to-end tests are run by hand with a headless browser, not in CI.
 - This is not medical advice.
 
@@ -133,15 +133,19 @@ All configuration is read and validated in `src/lib/env.ts`; an invalid value is
 src/app/api/*            thin routes: plan, explain, ask, geocode, reverse
 src/proxy.ts             per-request CSP nonce
 src/lib/http.ts          request id, rate limit, body checks, coded errors
+src/lib/container.ts     builds the services with their real collaborators (composition root)
 src/lib/planService.ts   what the routes call: plan, explanation, answer, with caching
-src/lib/engine/          constants, hourly windows, context, rules/ (one file per topic), plan
+src/lib/engine/          constants, priorities, copy (every sentence, EN and HI), hourly windows,
+                         context, rules/ (one file per topic, numbers only), plan
 src/lib/ai/              providers (OpenAI, Gemini), prompts, number guard
 src/lib/answers.ts       answers without AI, by topic
 src/lib/air*.ts, openaq.ts, station.ts   air sources: OpenAQ, then WAQI, then the model
 src/lib/places.ts        place search and reverse lookup (cached, throttled)
 src/lib/env.ts, cache.ts, ratelimit.ts, log.ts, errors.ts   shared infrastructure
-src/lib/format.ts, i18n.ts   numbers, hours and all text in English and Hindi
-src/lib/client/api.ts    the browser's typed API client
+src/lib/types.ts         reply formats as zod schemas; the TypeScript types are inferred from them
+src/lib/format.ts        numbers and hours in English and Hindi
+src/lib/i18n/            interface text, one file per area of the page
+src/lib/client/api.ts    the browser's API client; checks every reply against the shared schemas
 src/components/hooks/    usePlan, useDoneLog, useLocate, usePlaceSearch
 src/components/*         UI sections; styles in src/app/styles/
 tests/                   unit, API route and component tests

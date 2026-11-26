@@ -21,7 +21,7 @@ export function usePlan() {
 
   useEffect(() => () => ctl.current?.abort(), []);
 
-  const load = useCallback(async (profile: Profile): Promise<boolean> => {
+  const load = useCallback(async function run(profile: Profile, attempt = 0): Promise<boolean> {
     if (!profile.place) return false;
     ctl.current?.abort();
     const c = new AbortController();
@@ -42,13 +42,16 @@ export function usePlan() {
     setAiStatus(base.aiEnabled ? "pending" : "off");
     if (base.aiEnabled) {
       api
-        .explain(profile, c.signal)
+        .explain(profile, base.fetchedAt, c.signal)
         .then((ai) => {
           setPlan((current) => (current === base ? withAi(base, ai) : current));
           setAiStatus("done");
         })
         .catch((e) => {
-          if (!isAbort(e)) setAiStatus("failed");
+          if (isAbort(e)) return;
+          // The air reading moved on between the two calls: reload once so text and numbers match.
+          if (e instanceof ClientError && e.code === "stale" && attempt === 0) void run(profile, 1);
+          else setAiStatus("failed");
         });
     }
     return true;

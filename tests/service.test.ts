@@ -4,10 +4,11 @@ import { snapshotFromOpenMeteo } from "../src/lib/airdata";
 import { firstStation } from "../src/lib/airsource";
 import { ClientError, api } from "../src/lib/client/api";
 import { K, RULES, buildContext, buildPlan, markCounted, planActions, type Rule } from "../src/lib/engine";
-import { getPlan, resetCaches } from "../src/lib/planService";
+import { getPlan, resetAll as resetCaches } from "../src/lib/container";
+import { createPlanService } from "../src/lib/planService";
 import { withAi } from "../src/lib/planText";
 import { shareText } from "../src/lib/share";
-import type { ActionOut } from "../src/lib/types";
+import { PlanViewSchema, type ActionOut } from "../src/lib/types";
 import { PROFILE, jsonResponse, openMeteoPayload, post } from "./helpers";
 
 const AI_KEYS = ["OPENAI_API_KEY", "GEMINI_API_KEY", "OPENAQ_API_KEY", "WAQI_TOKEN"];
@@ -83,7 +84,8 @@ describe("planService", () => {
 describe("/api/explain", () => {
   it("answers 503 with a code when AI is off, so the client keeps the rule text", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(openMeteoPayload())));
-    const res = await explain(post("/api/explain", PROFILE));
+    const { fetchedAt } = await getPlan(PROFILE);
+    const res = await explain(post("/api/explain", { profile: PROFILE, fetchedAt }));
     expect(res.status).toBe(503);
     expect(await res.json()).toMatchObject({ code: "ai_unavailable" });
   });
@@ -100,9 +102,57 @@ describe("/api/explain", () => {
           : jsonResponse(openMeteoPayload(90, 126)),
       ),
     );
-    const res = await explain(post("/api/explain", PROFILE));
+    const { fetchedAt } = await getPlan(PROFILE);
+    const res = await explain(post("/api/explain", { profile: PROFILE, fetchedAt }));
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ headline: reply.headline });
+  });
+});
+
+describe("/api/explain consistency", () => {
+  it("refuses with 409 'stale' when the page's plan came from an older air reading", async () => {
+    process.env.OPENAI_API_KEY = "sk-test";
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(openMeteoPayload())));
+    const res = await explain(post("/api/explain", { profile: PROFILE, fetchedAt: "2000-01-01T00:00:00.000Z" }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ code: "stale" });
+  });
+});
+
+describe("createPlanService with injected collaborators", () => {
+  const air = snap();
+  const fakes = () => ({
+    fetchAir: vi.fn(async () => air),
+    explain: vi.fn(async () => ({ headline: "H", summary: "S", familyTips: [], notes: {} })),
+    answer: vi.fn(async () => null),
+  });
+
+  it("needs no network: air, explanation and answers come from the fakes", async () => {
+    const deps = fakes();
+    const svc = createPlanService(deps);
+    const plan = await svc.getPlan(PROFILE);
+    expect(await svc.explainPlan(plan, PROFILE)).toMatchObject({ headline: "H" });
+    const reply = await svc.answerQuestion("Which mask should we buy?", PROFILE);
+    expect(reply.source).toBe("rules");
+    expect(deps.fetchAir).toHaveBeenCalledTimes(1); // the question reused the cached reading
+  });
+
+  it("caches explanations but retries failed answers", async () => {
+    const deps = fakes();
+    const svc = createPlanService(deps);
+    const plan = await svc.getPlan(PROFILE);
+    await svc.explainPlan(plan, PROFILE);
+    await svc.explainPlan(plan, PROFILE);
+    expect(deps.explain).toHaveBeenCalledTimes(1);
+    await svc.answerQuestion("Is it safe?", PROFILE);
+    await svc.answerQuestion("Is it safe?", PROFILE);
+    expect(deps.answer).toHaveBeenCalledTimes(2);
+  });
+
+  it("turns any air failure into a coded error", async () => {
+    const svc = createPlanService({ ...fakes(), fetchAir: async () => { throw new Error("down"); } });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(svc.getPlan(PROFILE)).rejects.toMatchObject({ code: "air_unavailable" });
   });
 });
 
@@ -114,6 +164,21 @@ describe("client api", () => {
     await expect(api.plan(PROFILE)).rejects.toMatchObject({ code: "network" });
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
     await expect(api.plan(PROFILE)).rejects.toBeInstanceOf(ClientError);
+  });
+
+  it("checks every reply against the shared schema", async () => {
+    const good = { ...buildPlan(PROFILE, snap()), aiEnabled: false };
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(good)));
+    await expect(api.plan(PROFILE)).resolves.toMatchObject({ place: "Kochi" });
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ ...good, hours: "not a list" })));
+    await expect(api.plan(PROFILE)).rejects.toMatchObject({ code: "internal" });
+  });
+
+  it("the server's real reply passes the client's check", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(openMeteoPayload())));
+    const { POST } = await import("../src/app/api/plan/route");
+    const body = await (await POST(post("/api/plan", PROFILE))).json();
+    expect(PlanViewSchema.safeParse(body).success).toBe(true);
   });
 });
 

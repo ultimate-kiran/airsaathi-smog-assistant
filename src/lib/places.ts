@@ -2,18 +2,13 @@ import { z } from "zod";
 import { TtlCache } from "./cache";
 import { toGrid } from "./distance";
 import { AppError } from "./errors";
-import { sharedLimiter } from "./ratelimit";
+import type { RateLimiter } from "./ratelimit";
 import { AddressSchema, placeName } from "./placename";
-import type { Lang } from "./types";
+import type { Lang, Place } from "./types";
 
 /** Forward search (Open-Meteo) and reverse lookup (OpenStreetMap Nominatim) for Indian places. */
 
-export interface Place {
-  name: string;
-  short: string;
-  lat: number;
-  lon: number;
-}
+export type { Place };
 
 const SearchSchema = z.object({
   results: z
@@ -72,42 +67,52 @@ export class Throttle {
   }
 }
 
-export const nominatimGate = new Throttle(1100);
-const reverseCache = new TtlCache<Place | null>(2000);
 const ResultSchema = z.object({ address: AddressSchema.optional() });
 
-/** Across instances (only when a shared store exists; within one, the Throttle already spaces calls). */
-async function globalSlot(): Promise<boolean> {
-  const shared = sharedLimiter();
-  if (!shared || (await shared.hit("nominatim", 1, nominatimGate.intervalMs))) return true;
-  await new Promise((r) => setTimeout(r, nominatimGate.intervalMs));
-  return shared.hit("nominatim", 1, nominatimGate.intervalMs);
+export interface PlaceServiceDeps {
+  /** cross-instance limiter, or null when only this instance counts */
+  shared: () => RateLimiter | null;
+  gate?: Throttle;
+  ttlMs?: number;
 }
 
-/** Place name for ~1 km rounded coordinates, or null when the point has no name. */
-export function reversePlace(lat: number, lon: number, lang: Lang): Promise<Place | null> {
-  const rlat = toGrid(lat);
-  const rlon = toGrid(lon);
-  return reverseCache.getOrLoad(`${rlat},${rlon},${lang}`, 24 * 3_600_000, async () => {
-    await nominatimGate.wait();
-    if (!(await globalSlot())) throw new AppError("lookup_unavailable");
-    let data: z.infer<typeof ResultSchema>;
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=${lang === "hi" ? "hi,en" : "en"}&lat=${rlat}&lon=${rlon}`,
-        { headers: { "User-Agent": "AirSaathi-smog-assistant" }, signal: AbortSignal.timeout(6000), next: { revalidate: 86_400 } },
-      );
-      if (!res.ok) throw new Error("upstream");
-      data = ResultSchema.parse(await res.json());
-    } catch {
-      throw new AppError("lookup_unavailable");
-    }
-    if (data.address?.country_code && data.address.country_code !== "in") throw new AppError("outside_india");
-    const named = data.address ? placeName(data.address) : null;
-    return named ? { ...named, lat: rlat, lon: rlon } : null;
-  });
-}
+export type PlaceService = ReturnType<typeof createPlaceService>;
 
-export function resetPlaceCaches(): void {
-  reverseCache.clear();
+/** Reverse lookups with their cache and throttle; container.ts wires the real one. */
+export function createPlaceService({ shared, gate = new Throttle(1100), ttlMs = 24 * 3_600_000 }: PlaceServiceDeps) {
+  const cache = new TtlCache<Place | null>(2000);
+
+  /** Across instances (only when a shared store exists; within one, the Throttle already spaces calls). */
+  async function globalSlot(): Promise<boolean> {
+    const s = shared();
+    if (!s || (await s.hit("nominatim", 1, gate.intervalMs))) return true;
+    await new Promise((r) => setTimeout(r, gate.intervalMs));
+    return s.hit("nominatim", 1, gate.intervalMs);
+  }
+
+  /** Place name for ~1 km rounded coordinates, or null when the point has no name. */
+  function reverse(lat: number, lon: number, lang: Lang): Promise<Place | null> {
+    const rlat = toGrid(lat);
+    const rlon = toGrid(lon);
+    return cache.getOrLoad(`${rlat},${rlon},${lang}`, ttlMs, async () => {
+      await gate.wait();
+      if (!(await globalSlot())) throw new AppError("lookup_unavailable");
+      let data: z.infer<typeof ResultSchema>;
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=${lang === "hi" ? "hi,en" : "en"}&lat=${rlat}&lon=${rlon}`,
+          { headers: { "User-Agent": "AirSaathi-smog-assistant" }, signal: AbortSignal.timeout(6000), next: { revalidate: 86_400 } },
+        );
+        if (!res.ok) throw new Error("upstream");
+        data = ResultSchema.parse(await res.json());
+      } catch {
+        throw new AppError("lookup_unavailable");
+      }
+      if (data.address?.country_code && data.address.country_code !== "in") throw new AppError("outside_india");
+      const named = data.address ? placeName(data.address) : null;
+      return named ? { ...named, lat: rlat, lon: rlon } : null;
+    });
+  }
+
+  return { search: searchPlaces, reverse, gate, reset: () => cache.clear() };
 }

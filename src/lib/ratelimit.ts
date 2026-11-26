@@ -36,23 +36,33 @@ export class UpstashLimiter implements RateLimiter {
     private readonly fallback: RateLimiter,
   ) {}
 
+  /**
+   * Sliding-window counter: this window's count plus the previous window's count weighted by how
+   * much of it still overlaps the last `windowMs`. Unlike plain fixed windows, a burst at a window
+   * edge cannot get twice the limit through.
+   */
   async hit(key: string, limit: number, windowMs: number): Promise<boolean> {
-    const bucket = `rl:${key}:${Math.floor(Date.now() / windowMs)}`;
+    const now = Date.now();
+    const current = Math.floor(now / windowMs);
+    const bucket = (n: number) => `rl:${key}:${n}`;
     try {
       const res = await fetch(`${this.url}/pipeline`, {
         method: "POST",
         headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
         body: JSON.stringify([
-          ["INCR", bucket],
-          ["PEXPIRE", bucket, String(windowMs)],
+          ["INCR", bucket(current)],
+          ["PEXPIRE", bucket(current), String(windowMs * 2)],
+          ["GET", bucket(current - 1)],
         ]),
         signal: AbortSignal.timeout(1500),
         cache: "no-store",
       });
       if (!res.ok) throw new Error(`upstash ${res.status}`);
-      const [incr] = (await res.json()) as { result?: number }[];
+      const [incr, , prev] = (await res.json()) as { result?: number | string | null }[];
       if (typeof incr?.result !== "number") throw new Error("upstash reply");
-      return incr.result <= limit;
+      const overlap = 1 - (now % windowMs) / windowMs;
+      const estimate = incr.result + Number(prev?.result ?? 0) * overlap;
+      return estimate <= limit;
     } catch (e) {
       log("warn", "ratelimit.fallback", { reason: errorName(e) });
       return this.fallback.hit(key, limit, windowMs);

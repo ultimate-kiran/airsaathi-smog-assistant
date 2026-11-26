@@ -83,11 +83,21 @@ describe("rate limiting", () => {
   it("uses Redis counts when available, and falls back to memory when Redis fails", async () => {
     const fallback = new MemoryLimiter();
     const up = new UpstashLimiter("https://redis.example", "tok_1234567890", fallback);
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse([{ result: 3 }, { result: 1 }])));
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse([{ result: 3 }, { result: 1 }, { result: null }])));
     expect(await up.hit("k", 2, 60_000)).toBe(false);
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("down"); }));
     expect(await up.hit("k", 2, 60_000)).toBe(true);
+  });
+
+  it("counts the previous window in proportion to its overlap (no double burst at the edge)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(Math.ceil(Date.now() / 60_000) * 60_000 + 15_000)); // a quarter into a window
+    const up = new UpstashLimiter("https://redis.example", "tok_1234567890", new MemoryLimiter());
+    // 2 hits so far in this window, 10 in the previous one: 2 + 10 × 0.75 = 9.5
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse([{ result: 2 }, { result: 1 }, { result: "10" }])));
+    expect(await up.hit("k", 9, 60_000)).toBe(false);
+    expect(await up.hit("k", 10, 60_000)).toBe(true);
   });
 
   it("trusts the platform's x-real-ip, then the right-most forwarded address", () => {

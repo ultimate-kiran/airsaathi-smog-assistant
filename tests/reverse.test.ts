@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as reverse } from "../src/app/api/reverse/route";
 import { nameFor } from "../src/lib/geo";
 import { placeName } from "../src/lib/placename";
-import { nominatimGate, resetPlaceCaches } from "../src/lib/places";
+import { places, resetAll } from "../src/lib/container";
 import { jsonResponse } from "./helpers";
 
 beforeEach(() => {
-  resetPlaceCaches();
-  nominatimGate.intervalMs = 0; // the one-per-second spacing has its own test
+  resetAll();
+  places.gate.intervalMs = 0; // the one-per-second spacing has its own test
 });
 afterEach(() => vi.unstubAllGlobals());
 

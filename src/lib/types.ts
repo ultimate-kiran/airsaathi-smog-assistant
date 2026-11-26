@@ -41,19 +41,35 @@ export const ProfileSchema = z.object({
 });
 export type Profile = z.infer<typeof ProfileSchema>;
 
-export type CategoryKey = "good" | "satisfactory" | "moderate" | "poor" | "veryPoor" | "severe";
+/*
+ * API reply formats. Each is a zod schema and its TypeScript type is inferred from it, so the type
+ * the server builds and the check the browser runs on every reply cannot drift apart.
+ */
+
+export const CATEGORY_KEYS = ["good", "satisfactory", "moderate", "poor", "veryPoor", "severe"] as const;
+export type CategoryKey = (typeof CATEGORY_KEYS)[number];
+
+export const ACTION_GROUPS = ["health", "move", "outdoor", "indoor", "kitchen", "community"] as const;
+export type ActionGroup = (typeof ACTION_GROUPS)[number];
+
+const hour = z.number().int().min(0).max(23);
+
+/** [start, end) in local hours; end may wrap past midnight. */
+export const HourRangeSchema = z.object({ start: hour, end: hour });
+export type HourRange = z.infer<typeof HourRangeSchema>;
 
 /** One hour of the forecast. Hours are numbers; the UI formats them in the reader's language. */
-export interface HourPoint {
-  hour: number; // local hour 0-23
-  pm25: number;
-  pm10: number;
-  aqi: number;
-  category: CategoryKey;
-  isNow: boolean;
-}
+export const HourPointSchema = z.object({
+  hour,
+  pm25: z.number(),
+  pm10: z.number(),
+  aqi: z.number(),
+  category: z.enum(CATEGORY_KEYS),
+  isNow: z.boolean(),
+});
+export type HourPoint = z.infer<typeof HourPointSchema>;
 
-/** A ground-station reading, from OpenAQ (median of several) or WAQI (nearest one). */
+/** A ground-station reading, from OpenAQ (median of several) or WAQI (nearest one). Server only. */
 export interface StationReading {
   name: string;
   km: number;
@@ -66,77 +82,90 @@ export interface StationReading {
   uncertain?: boolean;
 }
 
-export type ActionGroup = "health" | "move" | "outdoor" | "indoor" | "kitchen" | "community";
-
-export interface Impact {
+export const ImpactSchema = z.object({
   /** micrograms of PM2.5 you avoid inhaling, per day */
-  inhaledPm25Ug?: number;
+  inhaledPm25Ug: z.number().optional(),
   /** kg CO2e avoided, per day */
-  co2eKg?: number;
-}
+  co2eKg: z.number().optional(),
+});
+export type Impact = z.infer<typeof ImpactSchema>;
 
-export interface ActionOut {
-  id: string;
-  group: ActionGroup;
+export const ActionOutSchema = z.object({
+  id: z.string(),
+  group: z.enum(ACTION_GROUPS),
   /** actions sharing an exclusive key are alternatives; only the best counts toward totals */
-  exclusive?: string;
-  /** true for the action that counts toward the totals (always true when there is no exclusive key) */
-  counted: boolean;
-  priority: number;
-  title: string;
-  why: string;
-  impact: Impact;
+  exclusive: z.string().optional(),
+  /** true for the action that counts toward the totals (always true without an exclusive key) */
+  counted: z.boolean(),
+  priority: z.number(),
+  title: z.string(),
+  why: z.string(),
+  impact: ImpactSchema,
   /** plain-language assumptions behind the numbers (empty when impact is qualitative) */
-  assumption: string;
+  assumption: z.string(),
   /** local hour range the action is tied to, formatted by the UI */
-  window?: HourRange;
-  forWhom: string[];
+  window: HourRangeSchema.optional(),
+  forWhom: z.array(z.string()),
   /** personalised sentence from the AI model, only ever restating numbers from this object */
-  note?: string;
-}
+  note: z.string().optional(),
+});
+export type ActionOut = z.infer<typeof ActionOutSchema>;
 
-/** [start, end) in local hours; end may wrap past midnight. */
-export interface HourRange {
-  start: number;
-  end: number;
-}
+export const AirSourceSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("model") }),
+  z.object({
+    kind: z.literal("station"),
+    name: z.string(),
+    km: z.number(),
+    updated: z.string(),
+    count: z.number(),
+    uncertain: z.boolean(),
+  }),
+]);
+export type AirSource = z.infer<typeof AirSourceSchema>;
 
-export type AirSource =
-  | { kind: "model" }
-  | { kind: "station"; name: string; km: number; updated: string; count: number; uncertain: boolean };
+export const PlanTextSchema = z.object({
+  source: z.enum(["ai", "rules"]),
+  headline: z.string(),
+  summary: z.string(),
+  familyTips: z.array(z.string()),
+});
+export type PlanText = z.infer<typeof PlanTextSchema>;
 
-export interface PlanText {
-  source: "ai" | "rules";
-  headline: string;
-  summary: string;
-  familyTips: string[];
-}
-
-export interface PlanResponse {
-  place: string;
-  lang: Lang;
-  fetchedAt: string;
-  source: AirSource;
-  aqi: { value: number; category: CategoryKey; pm25: number; pm10: number };
-  cigarettes: number;
-  hours: HourPoint[];
-  bestWindow: (HourRange & { aqi: number }) | null;
-  avoid: (HourRange & { allDay: boolean }) | null;
-  actions: ActionOut[];
-  totals: { inhaledPm25Ug: number; co2eKg: number; cigaretteEq: number };
-  ai: PlanText;
-}
+export const PlanResponseSchema = z.object({
+  place: z.string(),
+  lang: z.enum(["en", "hi"]),
+  fetchedAt: z.string(),
+  source: AirSourceSchema,
+  aqi: z.object({ value: z.number(), category: z.enum(CATEGORY_KEYS), pm25: z.number(), pm10: z.number() }),
+  cigarettes: z.number(),
+  hours: z.array(HourPointSchema).min(1),
+  bestWindow: HourRangeSchema.extend({ aqi: z.number() }).nullable(),
+  avoid: HourRangeSchema.extend({ allDay: z.boolean() }).nullable(),
+  actions: z.array(ActionOutSchema),
+  totals: z.object({ inhaledPm25Ug: z.number(), co2eKg: z.number(), cigaretteEq: z.number() }),
+  ai: PlanTextSchema,
+});
+export type PlanResponse = z.infer<typeof PlanResponseSchema>;
 
 /** What /api/plan returns: the rule-based plan, plus whether /api/explain can add AI text. */
-export type PlanView = PlanResponse & { aiEnabled: boolean };
+export const PlanViewSchema = PlanResponseSchema.extend({ aiEnabled: z.boolean() });
+export type PlanView = z.infer<typeof PlanViewSchema>;
 
 /** What /api/explain returns, merged into the plan by the client. */
-export interface AiExplanation {
-  headline: string;
-  summary: string;
-  familyTips: string[];
-  notes: Record<string, string>;
-}
+export const AiExplanationSchema = z.object({
+  headline: z.string(),
+  summary: z.string(),
+  familyTips: z.array(z.string()),
+  notes: z.record(z.string(), z.string()),
+});
+export type AiExplanation = z.infer<typeof AiExplanationSchema>;
+
+export const AskReplySchema = z.object({ answer: z.string(), source: z.enum(["ai", "rules"]) });
+export type AskReply = z.infer<typeof AskReplySchema>;
+
+export const PlaceSchema = z.object({ name: z.string(), short: z.string(), lat: z.number(), lon: z.number() });
+export type Place = z.infer<typeof PlaceSchema>;
 
 /** Stable error codes the API returns; the client shows them in the reader's language. */
 export const ERROR_CODES = [
@@ -149,6 +178,7 @@ export const ERROR_CODES = [
   "not_found",
   "outside_india",
   "ai_unavailable",
+  "stale",
   "internal",
   "network",
 ] as const;

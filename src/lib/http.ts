@@ -23,6 +23,7 @@ const MESSAGES: Record<ErrorCode, string> = {
   not_found: "Nothing was found.",
   outside_india: "Only places in India are supported.",
   ai_unavailable: "AI explanations are unavailable right now.",
+  stale: "The air data changed since this plan was made. Reload the plan.",
   internal: "Something went wrong on our side. Try again.",
   network: "Could not reach the server.",
 };
@@ -37,6 +38,7 @@ const STATUS: Record<ErrorCode, number> = {
   not_found: 404,
   outside_india: 422,
   ai_unavailable: 503,
+  stale: 409,
   internal: 500,
   network: 503,
 };

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as geocode } from "../src/app/api/geocode/route";
 import { POST as ask } from "../src/app/api/ask/route";
 import { POST as plan } from "../src/app/api/plan/route";
-import { resetCaches } from "../src/lib/planService";
+import { resetAll as resetCaches } from "../src/lib/container";
 import { PROFILE, jsonResponse, openMeteoPayload, post } from "./helpers";
 
 beforeEach(() => {

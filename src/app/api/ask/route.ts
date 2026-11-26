@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ok, rateLimitOrThrow, readJson, route } from "@/lib/http";
-import { answerQuestion } from "@/lib/planService";
+import { answerQuestion } from "@/lib/container";
 import { ProfileSchema } from "@/lib/types";
 
 export const maxDuration = 30;
