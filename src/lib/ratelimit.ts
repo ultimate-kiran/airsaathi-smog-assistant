@@ -63,6 +63,12 @@ export class UpstashLimiter implements RateLimiter {
 const memory = new MemoryLimiter();
 let shared: { url: string; limiter: RateLimiter } | null = null;
 
+/** The cross-instance limiter, or null when only per-instance memory is available. */
+export function sharedLimiter(): RateLimiter | null {
+  const l = limiter();
+  return l === memory ? null : l;
+}
+
 export function limiter(): RateLimiter {
   const { UPSTASH_REDIS_REST_URL: url, UPSTASH_REDIS_REST_TOKEN: token } = env();
   if (!url || !token) return memory;

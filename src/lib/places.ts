@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TtlCache } from "./cache";
 import { toGrid } from "./distance";
 import { AppError } from "./errors";
-import { limiter } from "./ratelimit";
+import { sharedLimiter } from "./ratelimit";
 import { AddressSchema, placeName } from "./placename";
 import type { Lang } from "./types";
 
@@ -76,10 +76,12 @@ export const nominatimGate = new Throttle(1100);
 const reverseCache = new TtlCache<Place | null>(2000);
 const ResultSchema = z.object({ address: AddressSchema.optional() });
 
+/** Across instances (only when a shared store exists; within one, the Throttle already spaces calls). */
 async function globalSlot(): Promise<boolean> {
-  if (await limiter().hit("nominatim", 1, nominatimGate.intervalMs)) return true;
+  const shared = sharedLimiter();
+  if (!shared || (await shared.hit("nominatim", 1, nominatimGate.intervalMs))) return true;
   await new Promise((r) => setTimeout(r, nominatimGate.intervalMs));
-  return limiter().hit("nominatim", 1, nominatimGate.intervalMs);
+  return shared.hit("nominatim", 1, nominatimGate.intervalMs);
 }
 
 /** Place name for ~1 km rounded coordinates, or null when the point has no name. */

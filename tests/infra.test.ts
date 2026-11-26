@@ -140,6 +140,7 @@ describe("http helpers", () => {
       throw new TypeError("secret detail at /srv/app.ts:12");
     })(post("{}"));
     expect(crash.status).toBe(500);
+    expect(await crash.clone().json()).toMatchObject({ code: "internal" });
     expect(JSON.stringify(await crash.json())).not.toMatch(/secret|app\.ts/);
   });
 

@@ -23,6 +23,7 @@ const MESSAGES: Record<ErrorCode, string> = {
   not_found: "Nothing was found.",
   outside_india: "Only places in India are supported.",
   ai_unavailable: "AI explanations are unavailable right now.",
+  internal: "Something went wrong on our side. Try again.",
   network: "Could not reach the server.",
 };
 
@@ -36,6 +37,7 @@ const STATUS: Record<ErrorCode, number> = {
   not_found: 404,
   outside_india: 422,
   ai_unavailable: 503,
+  internal: 500,
   network: 503,
 };
 
@@ -86,7 +88,7 @@ export function route(name: string, handler: Handler): Handler {
         res = fail(e.code, e.extra);
       } else {
         log("error", "route.crash", { route: name, requestId, reason: errorName(e) });
-        res = NextResponse.json({ code: "network", error: "Something went wrong." }, { status: 500, headers: NO_STORE });
+        res = fail("internal");
       }
     }
     res.headers.set("x-request-id", requestId);

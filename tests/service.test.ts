@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as explain } from "../src/app/api/explain/route";
 import { snapshotFromOpenMeteo } from "../src/lib/airdata";
+import { firstStation } from "../src/lib/airsource";
 import { ClientError, api } from "../src/lib/client/api";
 import { K, RULES, buildContext, buildPlan, markCounted, planActions, type Rule } from "../src/lib/engine";
 import { getPlan, resetCaches } from "../src/lib/planService";
@@ -122,5 +123,16 @@ describe("shareText", () => {
     const text = shareText(plan, "hi");
     expect(text).toContain("AirSaathi · Kochi");
     if (plan.bestWindow) expect(text).toMatch(/बजे/);
+  });
+});
+
+describe("station sources", () => {
+  it("tries sources in order and stops at the first reading", async () => {
+    const reading = { name: "S", km: 3, updatedISO: "2026-11-26T10:00:00Z", pm25: 50, pm10: null };
+    const a = vi.fn(async () => null);
+    const b = vi.fn(async () => reading);
+    const c = vi.fn(async () => reading);
+    await expect(firstStation(1, 2, [a, b, c])).resolves.toBe(reading);
+    expect(c).not.toHaveBeenCalled();
   });
 });

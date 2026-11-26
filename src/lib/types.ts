@@ -149,6 +149,7 @@ export const ERROR_CODES = [
   "not_found",
   "outside_india",
   "ai_unavailable",
+  "internal",
   "network",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

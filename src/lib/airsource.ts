@@ -1,6 +1,25 @@
 import { fetchAir, type AirSnapshot } from "./airdata";
 import { fetchOpenAq } from "./openaq";
 import { applyStation, fetchStation } from "./station";
+import type { StationReading } from "./types";
+
+/** A ground-station source: a reading, or null when it has nothing fresh nearby. Never throws. */
+export type StationSource = (lat: number, lon: number) => Promise<StationReading | null>;
+
+/** Tried in order; the first one with a reading wins, so later sources only spend quota when needed. */
+export const STATION_SOURCES: readonly StationSource[] = [fetchOpenAq, fetchStation];
+
+export async function firstStation(
+  lat: number,
+  lon: number,
+  sources: readonly StationSource[] = STATION_SOURCES,
+): Promise<StationReading | null> {
+  for (const source of sources) {
+    const reading = await source(lat, lon);
+    if (reading) return reading;
+  }
+  return null;
+}
 
 /**
  * The one place that decides where air data comes from, shared by /api/plan and /api/ask so the
@@ -13,7 +32,7 @@ import { applyStation, fetchStation } from "./station";
  * comes from. The station lookups run alongside it and never reject (they return null instead).
  */
 export async function fetchBestAir(lat: number, lon: number): Promise<AirSnapshot> {
-  const stationRequest = fetchOpenAq(lat, lon).then((s) => s ?? fetchStation(lat, lon));
+  const stationRequest = firstStation(lat, lon);
   const air = await fetchAir(lat, lon); // throws when the model is unreachable
   const station = await stationRequest;
   return station ? applyStation(air, station) : air;
