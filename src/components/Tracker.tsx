@@ -1,4 +1,5 @@
-import { INHALED_UG_PER_CIGARETTE } from "@/lib/aqi";
+import { toCigarettes } from "@/lib/aqi";
+import { formatInt, round1 } from "@/lib/format";
 import { UI } from "@/lib/i18n";
 import { lastNDays, localDate, streak, type DoneLog } from "@/lib/storage";
 import type { Lang } from "@/lib/types";
@@ -14,7 +15,7 @@ export default function Tracker({ log, lang }: { log: DoneLog; lang: Lang }) {
   const series = days.map((d) => sum(log, d, "ug"));
   const top = Math.max(1, ...series);
   const any = Object.values(log).some((e) => e.length > 0);
-  const cig = Math.round((ugToday / INHALED_UG_PER_CIGARETTE) * 10) / 10;
+  const cig = toCigarettes(ugToday);
 
   return (
     <section className="panel tracker" aria-labelledby="tracker-title">
@@ -27,7 +28,7 @@ export default function Tracker({ log, lang }: { log: DoneLog; lang: Lang }) {
             <div>
               <dt>{t.today}</dt>
               <dd>
-                {Math.round(ugToday).toLocaleString("en-IN")}
+                {formatInt(ugToday)}
                 <small> µg PM2.5</small>
               </dd>
               {cig >= 0.1 && <p className="muted">{t.cigEq(cig)}</p>}
@@ -35,8 +36,8 @@ export default function Tracker({ log, lang }: { log: DoneLog; lang: Lang }) {
             <div>
               <dt>CO₂</dt>
               <dd>
-                {Math.round(co2Today * 10) / 10}
-                <small> kg</small>
+                {round1(co2Today)}
+                <small> {t.units.kg}</small>
               </dd>
             </div>
             <div>

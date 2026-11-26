@@ -4,6 +4,7 @@ import { useId, type CSSProperties } from "react";
 import { UI } from "@/lib/i18n";
 import type { Profile } from "@/lib/types";
 import Icon, { type IconName } from "./Icon";
+import { COOKING_ICON, HEATING_ICON, MODE_ICON, WINDOW_ICON } from "./iconMaps";
 
 interface Props {
   profile: Profile;
@@ -16,16 +17,6 @@ interface Props {
   onCancel: () => void;
 }
 
-const MODE_ICON: Record<string, IconName> = {
-  car: "car",
-  bike: "bike",
-  bus: "bus",
-  metro: "metro",
-  walk: "walk",
-  wfh: "home",
-};
-const COOKING_ICON: Record<string, IconName> = { lpg: "lpg", png: "png", induction: "induction", biomass: "wood" };
-const HEATING_ICON: Record<string, IconName> = { none: "none", electric: "heater", biomass: "wood" };
 
 /** A person counter: big + and − buttons, easier than a number box on a phone. */
 function Stepper({
@@ -60,8 +51,8 @@ function Stepper({
   );
 }
 
-/** Pick one: large tiles with an icon, built on real radio inputs. */
-function Choices({
+/** Pick one: large tiles with an icon, built on real radio inputs. Typed by its option keys. */
+function Choices<K extends string>({
   legend,
   value,
   options,
@@ -70,18 +61,18 @@ function Choices({
   onChange,
 }: {
   legend: string;
-  value: string;
-  options: Record<string, string>;
-  icons: Record<string, IconName>;
+  value: K;
+  options: Record<K, string>;
+  icons: Record<K, IconName>;
   cols: number;
-  onChange: (v: string) => void;
+  onChange: (v: K) => void;
 }) {
   const name = useId();
   return (
     <fieldset className="q">
       <legend>{legend}</legend>
       <div className="choices" style={{ "--cols": cols } as CSSProperties}>
-        {Object.entries(options).map(([k, label]) => (
+        {(Object.entries(options) as [K, string][]).map(([k, label]) => (
           <div className="choice" key={k}>
             <input type="radio" id={`${name}-${k}`} name={name} checked={value === k} onChange={() => onChange(k)} />
             <label htmlFor={`${name}-${k}`}>
@@ -156,8 +147,6 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
   const t = UI[p.lang];
   const set = (patch: Partial<Profile>) => onChange({ ...p, ...patch });
   const hh = (patch: Partial<Profile["household"]>) => set({ household: { ...p.household, ...patch } });
-  const unitKm = p.lang === "hi" ? "किमी" : "km";
-  const unitMin = p.lang === "hi" ? "मिनट" : "min";
 
   return (
     <form
@@ -200,12 +189,12 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
             options={t.mode}
             icons={MODE_ICON}
             cols={3}
-            onChange={(v) => set({ commute: { ...p.commute, mode: v as Profile["commute"]["mode"] } })}
+            onChange={(mode) => set({ commute: { ...p.commute, mode } })}
           />
           {p.commute.mode !== "wfh" && (
             <Slider
               label={t.km}
-              unit={unitKm}
+              unit={t.units.km}
               value={p.commute.km}
               min={0}
               max={100}
@@ -222,7 +211,7 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
               options={t.cooking}
               icons={COOKING_ICON}
               cols={2}
-              onChange={(v) => set({ cooking: v as Profile["cooking"] })}
+              onChange={(cooking) => set({ cooking })}
             />
             <Choices
               legend={t.heatingLabel}
@@ -230,16 +219,16 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
               options={t.heating}
               icons={HEATING_ICON}
               cols={3}
-              onChange={(v) => set({ heating: v as Profile["heating"] })}
+              onChange={(heating) => set({ heating })}
             />
             <div className="q">
               <Choices
                 legend={t.windows}
                 value={p.windows}
-                options={{ open: t.windowsOpen, "mostly-closed": t.windowsClosed }}
-                icons={{ open: "windowOpen", "mostly-closed": "windowShut" }}
+                options={t.windowHabit}
+                icons={WINDOW_ICON}
                 cols={2}
-                onChange={(v) => set({ windows: v as Profile["windows"] })}
+                onChange={(windows) => set({ windows })}
               />
               <div className="toggles toggles--after">
                 <Toggle label={t.purifier} checked={p.hasPurifier} onChange={(b) => set({ hasPurifier: b })} />
@@ -257,7 +246,7 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
               {p.exercise.outdoor && (
                 <Slider
                   label={t.minutes}
-                  unit={unitMin}
+                  unit={t.units.min}
                   value={p.exercise.minutes}
                   min={0}
                   max={180}

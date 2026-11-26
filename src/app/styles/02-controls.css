@@ -1,0 +1,209 @@
+/* ---------- top bar ---------- */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(243, 245, 246, 0.84);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+
+.top__in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0.55rem var(--gx);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.logo {
+  display: block;
+  border-radius: 10px;
+  box-shadow: 0 6px 14px -6px rgba(10, 26, 38, 0.6);
+}
+
+.brand__name {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: -0.025em;
+}
+
+.brand__tag {
+  color: var(--ink-2);
+  font-size: 0.95rem;
+  padding-left: 0.8rem;
+  border-left: 1.5px solid var(--line-2);
+}
+
+.lang {
+  display: inline-flex;
+  padding: 3px;
+  background: #fff;
+  border: 1.5px solid var(--line-2);
+  border-radius: 999px;
+}
+
+.lang button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.3rem 0.95rem;
+  min-height: 38px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.lang button[aria-pressed="true"] {
+  background: var(--night);
+  color: #fff;
+}
+
+/* ---------- buttons, chips, pills ---------- */
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.6rem 1.3rem;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: linear-gradient(180deg, #0a7b72, #076a62);
+  color: #fff;
+  box-shadow: 0 12px 24px -12px rgba(7, 106, 98, 0.85);
+}
+.btn--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #08706a, #055a53);
+}
+
+.btn--lg {
+  min-height: 56px;
+  padding: 0.8rem 1.9rem;
+  font-size: 1.05rem;
+}
+
+.btn--soft {
+  background: var(--teal-soft);
+  color: var(--teal-deep);
+}
+.btn--soft:hover:not(:disabled) {
+  background: #d3ebe7;
+}
+
+.btn--outline,
+.btn--soft-dark {
+  background: #fff;
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+.btn--outline:hover:not(:disabled),
+.btn--soft-dark:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.btn--ghost {
+  color: var(--ink-2);
+}
+.btn--ghost:hover:not(:disabled) {
+  background: rgba(17, 31, 42, 0.06);
+}
+
+.linkish {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0.5rem 0.25rem;
+  min-height: 44px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--teal-deep);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.linkish:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.chip {
+  appearance: none;
+  border: 1px solid var(--line-2);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.93rem;
+  padding: 0.3rem 0.95rem;
+  min-height: 40px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.chip:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+.chip:disabled {
+  opacity: 0.55;
+}
+
+.chip--glass {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #fff;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.chip--glass:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: #fff;
+}
+
+.pill {
+  line-height: 1.4;
+  display: inline-block;
+  padding: 0.3rem 1.1rem;
+  border-radius: 999px;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+

@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { categoryFor, indiaAqi } from "./aqi";
-import { hourLabel, type AirSnapshot } from "./airdata";
-import type { HourPoint } from "./types";
+import { makeHour, type AirSnapshot } from "./airdata";
+import { haversineKm, toGrid } from "./distance";
+import { env } from "./env";
+import type { StationReading } from "./types";
 
 /**
  * Optional ground-station readings from WAQI (aqicn.org), enabled by WAQI_TOKEN.
@@ -31,18 +32,6 @@ const WaqiSchema = z.object({
   }),
 });
 
-export interface StationReading {
-  name: string;
-  km: number;
-  updatedISO: string;
-  pm25: number;
-  pm10: number | null;
-  /** how many stations back this number (default 1) */
-  count?: number;
-  /** true when the number rests on one station, low-cost sensors only, or stations that disagree */
-  uncertain?: boolean;
-}
-
 /** [aqiLow, aqiHigh, concLow, concHigh] */
 type Bp = readonly [number, number, number, number];
 // US EPA breakpoints (PM2.5 as revised in 2024; PM10 unchanged).
@@ -71,14 +60,6 @@ export function usIndexToUg(index: number, table: readonly Bp[]): number {
   return cLo + ((i - aLo) / (aHi - aLo)) * (cHi - cLo);
 }
 
-export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const r = Math.PI / 180;
-  const dLat = (lat2 - lat1) * r;
-  const dLon = (lon2 - lon1) * r;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLon / 2) ** 2;
-  return 6371 * 2 * Math.asin(Math.sqrt(a));
-}
-
 /** Pure parser, exported for tests. Returns null if the station is too far, too old or has no PM2.5. */
 export function parseWaqi(raw: unknown, lat: number, lon: number, now = new Date()): StationReading | null {
   const r = WaqiSchema.safeParse(raw);
@@ -99,33 +80,18 @@ export function parseWaqi(raw: unknown, lat: number, lon: number, now = new Date
   };
 }
 
-export function stationEnabled(): boolean {
-  return !!process.env.WAQI_TOKEN;
-}
-
 export async function fetchStation(lat: number, lon: number): Promise<StationReading | null> {
-  const token = process.env.WAQI_TOKEN;
-  if (!token || !/^[A-Za-z0-9]{20,60}$/.test(token)) return null;
+  const token = env().WAQI_TOKEN;
+  if (!token) return null;
   try {
-    const url = `https://api.waqi.info/feed/geo:${lat.toFixed(2)};${lon.toFixed(2)}/?token=${token}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000), next: { revalidate: 600 } });
+    // WAQI only accepts the token as a query parameter. This URL is never logged.
+    const url = `https://api.waqi.info/feed/geo:${toGrid(lat).toFixed(2)};${toGrid(lon).toFixed(2)}/?token=${token}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000), next: { revalidate: 600 } });
     if (!res.ok) return null;
     return parseWaqi(await res.json(), lat, lon);
   } catch {
     return null; // never fail the plan because the optional source is down
   }
-}
-
-function point(base: HourPoint, pm25: number, pm10: number): HourPoint {
-  const aqi = indiaAqi(pm25, pm10);
-  return {
-    ...base,
-    label: hourLabel(base.hour),
-    pm25: Math.round(pm25),
-    pm10: Math.round(pm10),
-    aqi,
-    category: categoryFor(aqi).key,
-  };
 }
 
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
@@ -138,12 +104,12 @@ export function applyStation(air: AirSnapshot, st: StationReading): AirSnapshot 
   const m = air.hours[0];
   const f25 = clamp(st.pm25 / Math.max(m.pm25, 1), 0.3, 3);
   const f10 = st.pm10 !== null ? clamp(st.pm10 / Math.max(m.pm10, 1), 0.3, 3) : f25;
-  const hours = air.hours.map((h) => point(h, h.pm25 * f25, h.pm10 * f10));
-  const current = point(air.current, st.pm25, st.pm10 ?? m.pm10 * f10);
+  const hours = air.hours.map((h) => makeHour(h, h.pm25 * f25, h.pm10 * f10));
+  const current = makeHour(air.current, st.pm25, st.pm10 ?? m.pm10 * f10);
   return {
     ...air,
     current,
-    hours: hours.map((h, i) => (i === 0 ? { ...current, hour: h.hour, label: h.label, isNow: true } : h)),
+    hours: hours.map((h, i) => (i === 0 ? { ...current, hour: h.hour, isNow: true } : h)),
     source: {
       kind: "station",
       name: st.name,

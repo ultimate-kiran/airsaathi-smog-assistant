@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { categoryFor, indiaAqi } from "./aqi";
+import { toGrid } from "./distance";
 import type { AirSource, HourPoint } from "./types";
 
 const AirSchema = z.object({
@@ -24,12 +25,6 @@ export interface AirSnapshot {
   source: AirSource;
 }
 
-export function hourLabel(h: number): string {
-  const ampm = h < 12 ? "am" : "pm";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12} ${ampm}`;
-}
-
 function fillGaps(values: (number | null)[]): number[] | null {
   const firstValid = values.find((v) => v !== null);
   if (firstValid === undefined || firstValid === null) return null;
@@ -43,17 +38,13 @@ function fillGaps(values: (number | null)[]): number[] | null {
 }
 
 function makePoint(time: string, pm25: number, pm10: number, isNow: boolean): HourPoint {
-  const hour = Number(time.slice(11, 13));
+  return makeHour({ hour: Number(time.slice(11, 13)), isNow }, pm25, pm10);
+}
+
+/** Builds one hour of the forecast from raw concentrations (shared with the station adjustment). */
+export function makeHour(base: Pick<HourPoint, "hour" | "isNow">, pm25: number, pm10: number): HourPoint {
   const aqi = indiaAqi(pm25, pm10);
-  return {
-    hour,
-    label: hourLabel(hour),
-    pm25: Math.round(pm25),
-    pm10: Math.round(pm10),
-    aqi,
-    category: categoryFor(aqi).key,
-    isNow,
-  };
+  return { ...base, pm25: Math.round(pm25), pm10: Math.round(pm10), aqi, category: categoryFor(aqi).key };
 }
 
 /** Pure transform, exported for tests. */
@@ -84,8 +75,8 @@ export function snapshotFromOpenMeteo(raw: unknown): AirSnapshot {
 
 export async function fetchAir(lat: number, lon: number): Promise<AirSnapshot> {
   // Round to ~1 km so we never send more precise location than we need.
-  const la = lat.toFixed(2);
-  const lo = lon.toFixed(2);
+  const la = toGrid(lat).toFixed(2);
+  const lo = toGrid(lon).toFixed(2);
   const url =
     "https://air-quality-api.open-meteo.com/v1/air-quality" +
     `?latitude=${la}&longitude=${lo}&current=pm2_5,pm10&hourly=pm2_5,pm10&forecast_days=2&timezone=auto`;

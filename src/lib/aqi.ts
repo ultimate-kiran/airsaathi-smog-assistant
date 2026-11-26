@@ -1,3 +1,4 @@
+import { round1 } from "./format";
 import type { Bilingual, CategoryKey } from "./types";
 
 /**
@@ -41,7 +42,6 @@ export interface Category {
   max: number;
   color: string;
   ink: string;
-  advice: Bilingual;
 }
 
 export const CATEGORIES: Category[] = [
@@ -50,63 +50,42 @@ export const CATEGORIES: Category[] = [
     label: { en: "Good", hi: "अच्छा" },
     max: 50,
     color: "#1c7d52",
-    ink: "#ffffff",
-    advice: { en: "Minimal impact.", hi: "बहुत कम असर।" },
+    ink: "#ffffff",
   },
   {
     key: "satisfactory",
     label: { en: "Satisfactory", hi: "संतोषजनक" },
     max: 100,
     color: "#76a82f",
-    ink: "#10200a",
-    advice: {
-      en: "Very sensitive people may notice minor breathing discomfort.",
-      hi: "बहुत संवेदनशील लोगों को हल्की सांस की परेशानी हो सकती है।",
-    },
+    ink: "#10200a",
   },
   {
     key: "moderate",
     label: { en: "Moderate", hi: "मध्यम" },
     max: 200,
     color: "#e0b000",
-    ink: "#2b2200",
-    advice: {
-      en: "People with lung or heart disease, children and older adults may feel discomfort.",
-      hi: "फेफड़े या दिल के रोगियों, बच्चों और बुज़ुर्गों को परेशानी हो सकती है।",
-    },
+    ink: "#2b2200",
   },
   {
     key: "poor",
     label: { en: "Poor", hi: "खराब" },
     max: 300,
     color: "#e0720b",
-    ink: "#1d0d00",
-    advice: {
-      en: "Most people may feel discomfort on prolonged exposure.",
-      hi: "लंबे समय तक रहने पर ज़्यादातर लोगों को परेशानी हो सकती है।",
-    },
+    ink: "#1d0d00",
   },
   {
     key: "veryPoor",
     label: { en: "Very poor", hi: "बहुत खराब" },
     max: 400,
     color: "#d03a2d",
-    ink: "#ffffff",
-    advice: {
-      en: "Breathing problems on prolonged exposure; serious for people with existing illness.",
-      hi: "लंबे समय तक रहने पर सांस की समस्या; पहले से बीमार लोगों के लिए गंभीर।",
-    },
+    ink: "#ffffff",
   },
   {
     key: "severe",
     label: { en: "Severe", hi: "गंभीर" },
     max: 500,
     color: "#8b1a3a",
-    ink: "#ffffff",
-    advice: {
-      en: "Affects healthy people and seriously affects those with existing illness.",
-      hi: "स्वस्थ लोगों पर भी असर; बीमार लोगों पर गंभीर असर।",
-    },
+    ink: "#ffffff",
   },
 ];
 
@@ -122,3 +101,9 @@ export function categoryByKey(key: CategoryKey): Category {
 export const UG_PER_CIGARETTE_DAY = 22;
 /** Dose behind that rule: 22 µg/m³ × ~15 m³ of air breathed per day. */
 export const INHALED_UG_PER_CIGARETTE = 330;
+
+/** Avoided (or inhaled) PM2.5 dose expressed as cigarettes. */
+export const toCigarettes = (inhaledUg: number) => round1(inhaledUg / INHALED_UG_PER_CIGARETTE);
+
+/** A day spent breathing this 24-hour average concentration, as cigarettes. */
+export const cigarettesForDay = (avgPm25: number) => round1(avgPm25 / UG_PER_CIGARETTE_DAY);

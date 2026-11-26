@@ -1,4 +1,4 @@
-import type { ActionGroup, Lang } from "./types";
+import type { ActionGroup, CommuteMode, CookingFuel, ErrorCode, HeatingType, Lang, WindowHabit } from "./types";
 
 type Strings = {
   tagline: string;
@@ -65,17 +65,16 @@ type Strings = {
   heart: string;
   pregnant: string;
   commute: string;
-  mode: Record<string, string>;
+  mode: Record<CommuteMode, string>;
   km: string;
   home: string;
-  cooking: Record<string, string>;
+  cooking: Record<CookingFuel, string>;
   cookingLabel: string;
-  heating: Record<string, string>;
+  heating: Record<HeatingType, string>;
   heatingLabel: string;
   purifier: string;
   windows: string;
-  windowsOpen: string;
-  windowsClosed: string;
+  windowHabit: Record<WindowHabit, string>;
   exercise: string;
   exerciseOutdoor: string;
   minutes: string;
@@ -103,6 +102,11 @@ type Strings = {
   locTimeout: string;
   locUnsupported: string;
   locYours: string;
+  units: { km: string; min: string; kg: string };
+  lessBreathed: string;
+  lessEmitted: string;
+  aiWriting: string;
+  errors: Record<ErrorCode, string>;
 };
 
 export const UI: Record<Lang, Strings> = {
@@ -124,7 +128,8 @@ export const UI: Record<Lang, Strings> = {
     srcModel: "Model estimate (no station data), may differ from local readings",
     srcStation: (name, km) => `Station: ${name}, ${km} km away`,
     srcStations: (n, km) => `Median of ${n} stations within ${km} km`,
-    srcUncertain: "Few or conflicting stations nearby, so treat this number as approximate.",    cigarettes: (n) => `Breathing today's air is roughly like smoking ${n} cigarette${n === 1 ? "" : "s"}.`,
+    srcUncertain: "Few or conflicting stations nearby, so treat this number as approximate.",
+    cigarettes: (n) => `Breathing today's air is roughly like smoking ${n} cigarette${n === 1 ? "" : "s"}.`,
     cleanest: "Cleanest hour",
     worst: "Worst stretch",
     allDay: "most of the day",
@@ -191,8 +196,7 @@ export const UI: Record<Lang, Strings> = {
     heating: { none: "None", electric: "Electric heater", biomass: "Wood or coal fire" },
     purifier: "We have an air purifier",
     windows: "Windows",
-    windowsOpen: "Often open",
-    windowsClosed: "Mostly closed",
+    windowHabit: { open: "Often open", "mostly-closed": "Mostly closed" },
     exercise: "Exercise",
     exerciseOutdoor: "Someone exercises outdoors",
     minutes: "Minutes per session",
@@ -230,6 +234,22 @@ export const UI: Record<Lang, Strings> = {
     locTimeout: "Finding your location took too long. Try again, or search for your city.",
     locUnsupported: "Your browser cannot share its location. Search for your city instead.",
     locYours: "Your location",
+    units: { km: "km", min: "min", kg: "kg" },
+    lessBreathed: "less breathed in",
+    lessEmitted: "less emitted",
+    aiWriting: "Writing a personalised explanation…",
+    errors: {
+      rate_limited: "Too many requests. Wait a minute and try again.",
+      too_large: "That request was too large.",
+      bad_json: "Something went wrong sending your details. Try again.",
+      invalid: "Some details are not valid. Check them and try again.",
+      air_unavailable: "Air quality data is not available for this place right now. Try again in a minute.",
+      lookup_unavailable: "This lookup is unavailable right now. Try again shortly.",
+      not_found: "Nothing was found.",
+      outside_india: "Only places in India are supported.",
+      ai_unavailable: "AI explanations are unavailable right now.",
+      network: "Could not reach the server. Check your connection and try again.",
+    },
   },
   hi: {
     tagline: "आपके परिवार के लिए स्मॉग प्लान",
@@ -249,7 +269,8 @@ export const UI: Record<Lang, Strings> = {
     srcModel: "मॉडल का अनुमान (स्टेशन डेटा नहीं), स्थानीय रीडिंग से अलग हो सकता है",
     srcStation: (name, km) => `स्टेशन: ${name}, ${km} किमी दूर`,
     srcStations: (n, km) => `${km} किमी के भीतर ${n} स्टेशनों का मध्यमान`,
-    srcUncertain: "आसपास स्टेशन कम हैं या उनकी रीडिंग अलग-अलग है, इसलिए इस संख्या को अनुमान मानें।",    cigarettes: (n) => `आज की हवा में साँस लेना लगभग ${n} सिगरेट पीने जैसा है।`,
+    srcUncertain: "आसपास स्टेशन कम हैं या उनकी रीडिंग अलग-अलग है, इसलिए इस संख्या को अनुमान मानें।",
+    cigarettes: (n) => `आज की हवा में साँस लेना लगभग ${n} सिगरेट पीने जैसा है।`,
     cleanest: "सबसे साफ़ घंटा",
     worst: "सबसे खराब समय",
     allDay: "दिन का ज़्यादातर हिस्सा",
@@ -316,8 +337,7 @@ export const UI: Record<Lang, Strings> = {
     heating: { none: "कुछ नहीं", electric: "इलेक्ट्रिक हीटर", biomass: "लकड़ी या कोयले की आग" },
     purifier: "हमारे पास एयर प्यूरीफ़ायर है",
     windows: "खिड़कियाँ",
-    windowsOpen: "अक्सर खुली",
-    windowsClosed: "ज़्यादातर बंद",
+    windowHabit: { open: "अक्सर खुली", "mostly-closed": "ज़्यादातर बंद" },
     exercise: "कसरत",
     exerciseOutdoor: "कोई बाहर कसरत करता है",
     minutes: "हर बार कितने मिनट",
@@ -355,6 +375,22 @@ export const UI: Record<Lang, Strings> = {
     locTimeout: "लोकेशन ढूँढने में बहुत देर लगी। फिर कोशिश करें, या अपना शहर खोजें।",
     locUnsupported: "आपका ब्राउज़र लोकेशन साझा नहीं कर सकता। अपना शहर खोजें।",
     locYours: "आपकी लोकेशन",
+    units: { km: "किमी", min: "मिनट", kg: "किग्रा" },
+    lessBreathed: "कम साँस में",
+    lessEmitted: "कम उत्सर्जन",
+    aiWriting: "आपके लिए व्याख्या लिखी जा रही है…",
+    errors: {
+      rate_limited: "बहुत ज़्यादा अनुरोध। एक मिनट रुककर फिर कोशिश करें।",
+      too_large: "अनुरोध बहुत बड़ा था।",
+      bad_json: "आपकी जानकारी भेजने में दिक्कत हुई। फिर कोशिश करें।",
+      invalid: "कुछ जानकारी सही नहीं है। जाँचकर फिर कोशिश करें।",
+      air_unavailable: "इस जगह का हवा का डेटा अभी उपलब्ध नहीं है। एक मिनट बाद फिर कोशिश करें।",
+      lookup_unavailable: "यह खोज अभी उपलब्ध नहीं है। थोड़ी देर बाद कोशिश करें।",
+      not_found: "कुछ नहीं मिला।",
+      outside_india: "केवल भारत की जगहें समर्थित हैं।",
+      ai_unavailable: "AI व्याख्या अभी उपलब्ध नहीं है।",
+      network: "सर्वर से संपर्क नहीं हो सका। अपना कनेक्शन जाँचकर फिर कोशिश करें।",
+    },
   },
 };
 

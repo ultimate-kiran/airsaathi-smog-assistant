@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { haversineKm, type StationReading } from "./station";
+import { haversineKm, toGrid } from "./distance";
+import { env } from "./env";
+import type { StationReading } from "./types";
 
 /**
  * Optional ground-station readings from OpenAQ v3 (https://openaq.org), enabled by OPENAQ_API_KEY.
@@ -134,14 +136,10 @@ export function aggregate(cands: OpenAqCandidate[]): StationReading | null {
   };
 }
 
-export function openAqEnabled(): boolean {
-  return !!process.env.OPENAQ_API_KEY;
-}
-
 async function get(path: string, key: string): Promise<unknown> {
   const res = await fetch(`https://api.openaq.org/v3${path}`, {
     headers: { "X-API-Key": key }, // header only, never in the URL
-    signal: AbortSignal.timeout(6000),
+    signal: AbortSignal.timeout(5000),
     next: { revalidate: 600 },
   });
   if (!res.ok) throw new Error(`OpenAQ ${res.status}`);
@@ -149,10 +147,10 @@ async function get(path: string, key: string): Promise<unknown> {
 }
 
 export async function fetchOpenAq(lat: number, lon: number): Promise<StationReading | null> {
-  const key = process.env.OPENAQ_API_KEY;
-  if (!key || !/^[A-Za-z0-9]{20,100}$/.test(key)) return null;
+  const key = env().OPENAQ_API_KEY;
+  if (!key) return null;
   try {
-    const q = `coordinates=${lat.toFixed(2)},${lon.toFixed(2)}&radius=${RADIUS_M}&parameters_id=2&limit=20`;
+    const q = `coordinates=${toGrid(lat).toFixed(2)},${toGrid(lon).toFixed(2)}&radius=${RADIUS_M}&parameters_id=2&limit=20`;
     const locs = pickLocations(await get(`/locations?${q}`, key), lat, lon);
     const settled = await Promise.allSettled(locs.map((l) => get(`/locations/${l.id}/latest`, key)));
     const cands: OpenAqCandidate[] = [];

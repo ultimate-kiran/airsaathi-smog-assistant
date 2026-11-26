@@ -1,37 +1,39 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { ClientError, api, isAbort } from "@/lib/client/api";
 import { UI } from "@/lib/i18n";
-import type { Profile } from "@/lib/types";
+import type { ErrorCode, Profile } from "@/lib/types";
 import Icon from "./Icon";
 
-export default function AskBox({ profile, enabled }: { profile: Profile; enabled: boolean }) {
+/** Mount with key={lang}: a language switch starts a fresh box, so no answer shows in the old language. */
+export default function AskBox({ profile }: { profile: Profile }) {
   const t = UI[profile.lang];
   const id = useId();
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<ErrorCode | null>(null);
   const [busy, setBusy] = useState(false);
+  const ctl = useRef<AbortController | null>(null);
+
+  useEffect(() => () => ctl.current?.abort(), []);
 
   async function ask(question: string) {
     const text = question.trim();
     if (text.length < 2 || busy) return;
+    ctl.current?.abort();
+    const c = new AbortController();
+    ctl.current = c;
     setBusy(true);
-    setError("");
+    setError(null);
     setAnswer("");
     try {
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: text, profile }),
-      });
-      const data = await res.json();
-      if (!res.ok) setError(data.error ?? "Something went wrong. Try again.");
-      else setAnswer(data.answer);
-    } catch {
-      setError("Could not reach the server. Check your connection and try again.");
+      setAnswer((await api.ask(text, profile, c.signal)).answer);
+    } catch (e) {
+      if (isAbort(e)) return;
+      setError(e instanceof ClientError ? e.code : "network");
     } finally {
-      setBusy(false);
+      if (ctl.current === c) setBusy(false);
     }
   }
 
@@ -49,15 +51,8 @@ export default function AskBox({ profile, enabled }: { profile: Profile; enabled
         <label htmlFor={id} className="sr-only">
           {t.askTitle}
         </label>
-        <input
-          id={id}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={t.askPlaceholder}
-          maxLength={300}
-          disabled={!enabled}
-        />
-        <button className="btn btn--primary" type="submit" disabled={!enabled || busy || q.trim().length < 2}>
+        <input id={id} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.askPlaceholder} maxLength={300} />
+        <button className="btn btn--primary" type="submit" disabled={busy || q.trim().length < 2}>
           {busy ? t.asking : t.askButton}
           {!busy && <Icon name="send" size={18} />}
         </button>
@@ -68,7 +63,7 @@ export default function AskBox({ profile, enabled }: { profile: Profile; enabled
             key={s}
             type="button"
             className="chip"
-            disabled={!enabled || busy}
+            disabled={busy}
             onClick={() => {
               setQ(s);
               void ask(s);
@@ -79,7 +74,7 @@ export default function AskBox({ profile, enabled }: { profile: Profile; enabled
         ))}
       </div>
       <div aria-live="polite">
-        {error && <p className="error">{error}</p>}
+        {error && <p className="error">{t.errors[error]}</p>}
         {answer && <p className="ask__answer">{answer}</p>}
       </div>
     </section>

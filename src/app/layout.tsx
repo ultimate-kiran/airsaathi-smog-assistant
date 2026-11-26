@@ -1,6 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Noto_Sans_Devanagari, Public_Sans } from "next/font/google";
-import "./globals.css";
+// Global styles, split by area; the import order is the cascade order.
+import "./styles/01-base.css";
+import "./styles/02-controls.css";
+import "./styles/03-hero.css";
+import "./styles/04-page.css";
+import "./styles/05-form.css";
+import "./styles/06-plan.css";
+import "./styles/07-footer-responsive.css";
 
 const display = Bricolage_Grotesque({
   subsets: ["latin"],

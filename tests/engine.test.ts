@@ -4,6 +4,7 @@ import { snapshotFromOpenMeteo } from "../src/lib/airdata";
 import { bestWindow, buildPlan, totalsFor } from "../src/lib/engine";
 import { numbersGrounded } from "../src/lib/ai";
 import { ProfileSchema, type Profile } from "../src/lib/types";
+import { formatRange } from "../src/lib/format";
 
 /** Two days of hourly data: dirty at night and dawn, cleanest around 2 pm. */
 function fixture(currentTime = "2026-11-20T09:15", peak = 260, trough = 110) {
@@ -86,7 +87,8 @@ describe("best window", () => {
     const s = snapshotFromOpenMeteo(fixture());
     const w = bestWindow(s.hours, 1);
     expect(w?.start).toBe(14);
-    expect(w?.label).toBe("2 pm–3 pm");
+    expect(formatRange(w!, "en")).toBe("2 pm–3 pm");
+    expect(formatRange(w!, "hi")).toBe("दोपहर 2–3 बजे");
   });
   it("never recommends night hours", () => {
     const s = snapshotFromOpenMeteo(fixture());
@@ -116,7 +118,7 @@ describe("plan", () => {
     const plan = buildPlan(base, mild);
     const ex = plan.actions.find((a) => a.id === "exercise-window");
     expect(ex).toBeDefined();
-    expect(ex!.window).toMatch(/pm/);
+    expect(formatRange(ex!.window!, "en")).toMatch(/pm/);
     expect(ex!.impact.inhaledPm25Ug).toBeGreaterThan(0);
   });
 

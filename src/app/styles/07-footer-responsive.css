@@ -1,0 +1,260 @@
+/* ---------- footer ---------- */
+.foot {
+  background: #e7ecee;
+}
+
+.foot__in {
+  display: grid;
+  gap: 12px;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 36px var(--gx) max(56px, env(safe-area-inset-bottom));
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+
+.foot p {
+  max-width: 92ch;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 1000px) {
+  /* Tablets: two ranked cards across, the third spans the row. */
+  .actions--top {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .actions--top > li:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  .duo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .totals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .tailor__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .reading {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 32px;
+  }
+  .reading__dial {
+    order: -1;
+    justify-self: center;
+    width: min(100%, 440px);
+  }
+}
+
+@media (max-width: 760px) {
+  .brand__tag {
+    display: none;
+  }
+  .how__list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+  .how__list li {
+    padding: 4px 0 0 68px;
+  }
+  .how__list li:not(:last-child)::after {
+    display: none;
+  }
+  .actions--more {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tailor__home {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .actions--top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hero {
+    border-radius: 26px;
+  }
+  .hero__inner {
+    padding-bottom: 170px;
+  }
+  .hero__intro {
+    margin-top: 40px;
+  }
+  .skyline,
+  .skyline-haze {
+    height: 175px;
+  }
+  .strip {
+    height: 200px;
+    gap: 3px;
+  }
+  .strip__val {
+    display: none;
+  }
+  .strip__tick {
+    font-size: 0.62rem;
+  }
+  .windows > div {
+    flex: 1 1 100%;
+  }
+  .search__box .btn {
+    flex: 1 1 100%;
+  }
+  /* Three counters side by side are too tight on a phone: stack them as rows. */
+  .steppers {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px 8px 16px;
+    text-align: left;
+  }
+  .stepper__label {
+    font-size: 0.98rem;
+  }
+}
+
+/* Small phones (320 to 380 px wide) */
+@media (max-width: 420px) {
+  .strip__col:not(:nth-child(6n + 1)) .strip__tick {
+    visibility: hidden;
+  }
+  .panel,
+  .tips-panel {
+    padding: 18px;
+  }
+  .tailor,
+  .how {
+    padding: 20px 16px;
+  }
+  .totals {
+    padding: 24px 20px;
+  }
+  .reading__dial {
+    padding: 16px 14px 20px;
+  }
+  .action,
+  .action--featured {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .action::before {
+    left: 18px;
+    right: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .logo {
+    width: 30px;
+    height: 30px;
+  }
+  .brand {
+    gap: 0.5rem;
+  }
+  .brand__name {
+    font-size: 1.2rem;
+  }
+  .lang button {
+    padding: 0.3rem 0.65rem;
+    font-size: 0.9rem;
+  }
+  .choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .choice label {
+    min-height: 76px;
+    overflow-wrap: anywhere;
+  }
+  .btn--lg {
+    width: 100%;
+  }
+  .tailor__foot .linkish {
+    width: 100%;
+    text-align: center;
+  }
+  .share__row .btn {
+    flex: 1 1 100%;
+  }
+  .totals__grid {
+    gap: 16px 28px;
+  }
+}
+
+/* Phones turned sideways: the sticky bar would eat a third of the screen. */
+@media (max-height: 520px) {
+  .top {
+    position: static;
+  }
+  .plan {
+    scroll-margin-top: 12px;
+  }
+}
+
+/* Touch: no double-tap zoom delay on controls. */
+.btn,
+.chip,
+.lang button,
+.choice label,
+.toggle label,
+.done span,
+.stepper__ctl button,
+.linkish {
+  touch-action: manipulation;
+}
+
+/* Big screens: scale the whole layout up instead of leaving a small island in the middle. */
+@media (min-width: 1700px) {
+  html {
+    font-size: 112.5%;
+  }
+}
+@media (min-width: 2200px) {
+  html {
+    font-size: 131.25%;
+  }
+}
+@media (min-width: 3000px) {
+  html {
+    font-size: 175%;
+  }
+}
+
+/* Windows high-contrast mode drops background colours, so keep the selected state visible. */
+@media (forced-colors: active) {
+  .choice input:checked + label,
+  .toggle input:checked + label,
+  .done input:checked + span {
+    outline: 3px solid Highlight;
+    outline-offset: -3px;
+  }
+  .gauge__dot,
+  .strip__bar {
+    forced-color-adjust: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-layer,
+  .sk-sun,
+  .skyline-haze,
+  .gauge__dot,
+  .btn,
+  .chip,
+  .choice label,
+  .toggle label,
+  .done span {
+    transition: none;
+  }
+  .dots {
+    animation: none;
+  }
+}

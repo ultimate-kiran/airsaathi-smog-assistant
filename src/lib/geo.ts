@@ -7,6 +7,9 @@
  * briefly and use the most accurate fix we saw, and report how accurate it was.
  */
 
+import { api } from "./client/api";
+import type { Lang } from "./types";
+
 export interface Fix {
   lat: number;
   lon: number;
@@ -111,11 +114,9 @@ export interface Named {
 }
 
 /** The place name for a position, or null when the lookup fails (the caller then keeps a generic label). */
-export async function nameFor(lat: number, lon: number, lang: "en" | "hi" = "en"): Promise<Named | null> {
+export async function nameFor(lat: number, lon: number, lang: Lang = "en"): Promise<Named | null> {
   try {
-    const res = await fetch(`/api/reverse?lat=${lat}&lon=${lon}&lang=${lang}`, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
-    const { place } = (await res.json()) as { place?: Partial<Named> };
+    const place = await api.reverse(lat, lon, lang, AbortSignal.timeout(8000));
     return place?.name && place.short ? { name: place.name, short: place.short } : null;
   } catch {
     return null;

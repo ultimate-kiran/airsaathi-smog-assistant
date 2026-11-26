@@ -1,26 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { INHALED_UG_PER_CIGARETTE } from "@/lib/aqi";
+import { toCigarettes } from "@/lib/aqi";
+import { formatInt, formatRange, round1 } from "@/lib/format";
 import { UI } from "@/lib/i18n";
 import type { ActionGroup, ActionOut, Lang, PlanView } from "@/lib/types";
 import Icon from "./Icon";
 
 const ORDER: ActionGroup[] = ["health", "move", "outdoor", "indoor", "kitchen", "community"];
-
-/** Marks which actions count toward totals: the first of each exclusive group. */
-function counted(actions: ActionOut[]): Set<string> {
-  const seen = new Set<string>();
-  const ok = new Set<string>();
-  for (const a of actions) {
-    if (a.exclusive) {
-      if (seen.has(a.exclusive)) continue;
-      seen.add(a.exclusive);
-    }
-    ok.add(a.id);
-  }
-  return ok;
-}
 
 /** Bolds the first number in a sentence so impact figures are easy to scan, in either language. */
 function emph(text: string): ReactNode {
@@ -38,14 +25,12 @@ function emph(text: string): ReactNode {
 function ActionItem({
   a,
   lang,
-  isCounted,
   isDone,
   onToggle,
   featured,
 }: {
   a: ActionOut;
   lang: Lang;
-  isCounted: boolean;
   isDone: boolean;
   onToggle: (a: ActionOut) => void;
   featured?: boolean;
@@ -53,7 +38,7 @@ function ActionItem({
   const t = UI[lang];
   const ug = a.impact.inhaledPm25Ug;
   const co2 = a.impact.co2eKg;
-  const cig = ug ? Math.round((ug / INHALED_UG_PER_CIGARETTE) * 10) / 10 : 0;
+  const cig = ug ? toCigarettes(ug) : 0;
   const hasNumbers = !!ug || !!co2;
 
   return (
@@ -63,7 +48,7 @@ function ActionItem({
         {a.window && (
           <span className="badge">
             <Icon name="clock" size={14} />
-            {a.window}
+            {formatRange(a.window, lang)}
           </span>
         )}
       </div>
@@ -89,7 +74,7 @@ function ActionItem({
               {cig >= 0.1 && <small>{t.cigEq(cig)}</small>}
             </span>
           ) : null}
-          {co2 ? <span className="stat stat--co2">{emph(t.co2(Math.round(co2 * 10) / 10))}</span> : null}
+          {co2 ? <span className="stat stat--co2">{emph(t.co2(round1(co2)))}</span> : null}
         </p>
       )}
 
@@ -102,7 +87,7 @@ function ActionItem({
         <p className="action__calc muted">{t.noNumbers}</p>
       )}
 
-      {a.exclusive && !isCounted && <p className="muted">{t.pickOne}</p>}
+      {!a.counted && <p className="muted">{t.pickOne}</p>}
 
       {hasNumbers && (
         <label className="done">
@@ -129,8 +114,7 @@ export default function Actions({
   onToggle: (a: ActionOut) => void;
 }) {
   const t = UI[lang];
-  const ok = counted(plan.actions);
-  const top = plan.actions.filter((a) => ok.has(a.id)).slice(0, 3);
+  const top = plan.actions.filter((a) => a.counted).slice(0, 3);
   const topIds = new Set(top.map((a) => a.id));
   const rest = plan.actions.filter((a) => !topIds.has(a.id));
 
@@ -140,7 +124,7 @@ export default function Actions({
         <h2 id="start-title">{t.startHere}</h2>
         <ol className="actions actions--top">
           {top.map((a) => (
-            <ActionItem key={a.id} a={a} lang={lang} isCounted isDone={doneIds.has(a.id)} onToggle={onToggle} featured />
+            <ActionItem key={a.id} a={a} lang={lang} isDone={doneIds.has(a.id)} onToggle={onToggle} featured />
           ))}
         </ol>
       </section>
@@ -156,11 +140,11 @@ export default function Actions({
               <div>
                 <dt>PM2.5</dt>
                 <dd>
-                  {plan.totals.inhaledPm25Ug.toLocaleString("en-IN")}
+                  {formatInt(plan.totals.inhaledPm25Ug)}
                   <small> µg</small>
                 </dd>
                 <dd className="totals__note">
-                  {lang === "hi" ? "कम साँस में" : "less breathed in"}
+                  {t.lessBreathed}
                   {plan.totals.cigaretteEq >= 0.1 && ` · ${t.cigEq(plan.totals.cigaretteEq)}`}
                 </dd>
               </div>
@@ -170,9 +154,9 @@ export default function Actions({
                 <dt>CO₂</dt>
                 <dd>
                   {plan.totals.co2eKg}
-                  <small> kg</small>
+                  <small> {t.units.kg}</small>
                 </dd>
-                <dd className="totals__note">{lang === "hi" ? "कम उत्सर्जन" : "less emitted"}</dd>
+                <dd className="totals__note">{t.lessEmitted}</dd>
               </div>
             )}
           </dl>
@@ -188,7 +172,6 @@ export default function Actions({
                 key={a.id}
                 a={a}
                 lang={lang}
-                isCounted={ok.has(a.id)}
                 isDone={doneIds.has(a.id)}
                 onToggle={onToggle}
               />

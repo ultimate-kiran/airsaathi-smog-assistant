@@ -14,7 +14,7 @@ Built with Google Antigravity.
 
 1. **Get the air reading for the place.** Real station data where it exists (OpenAQ, then WAQI), otherwise the Open-Meteo model. The app states which source it used and flags readings that are approximate.
 2. **Score it on India's scale.** PM2.5 and PM10 become a CPCB National AQI and a category, plus a 24-hour curve that gives the cleanest and worst hours.
-3. **Decide with rules, not with the LLM.** `src/lib/engine.ts` filters an action library by household and conditions (for example: a fitted N95 for bike, walk and bus commuters from AQI 150; work from home for car and bike commuters from AQI 300; metro or carpool instead of driving; exercise, children's play and older adults' walks moved to the cleanest hours or indoors; a bedroom purifier; smart window opening; cleaner cooking and no indoor burning; a separate plan for asthma, heart conditions and pregnancy). It ranks the steps that apply and keeps one commute choice at a time.
+3. **Decide with rules, not with the LLM.** `src/lib/engine/` runs one rule per piece of advice by household and conditions (for example: a fitted N95 for bike, walk and bus commuters from AQI 150; work from home for car and bike commuters from AQI 300; metro or carpool instead of driving; exercise, children's play and older adults' walks moved to the cleanest hours or indoors; a bedroom purifier; smart window opening; cleaner cooking and no indoor burning; a separate plan for asthma, heart conditions and pregnancy). It ranks the steps that apply and keeps one commute choice at a time.
 4. **Quantify every choice.** Each step shows PM2.5 avoided (`PM2.5 × breathing rate × hours`) and CO₂ avoided, with the assumptions listed. Where no defensible number exists, it says so.
 5. **Let the LLM explain, nothing else.** It writes the headline, summary and per-household notes from numbers already computed, and its output is validated and checked for invented numbers (see below).
 
@@ -44,18 +44,23 @@ profile + location ─► air data (src/lib/airsource.ts):
                       (24 h curve always comes from the model)
                          │
                          ▼
-              rules engine (src/lib/engine.ts)
-      action library · exposure maths · household filters
+              rules engine (src/lib/engine/)
+      one rule per piece of advice · exposure maths · ranking
                          │  all numbers are computed here
                          ▼
-     LLM (src/lib/ai.ts, OpenAI or Gemini): writes the explanations
+    /api/plan returns this rule-based plan at once; the page shows it
+                         │
+                         ▼
+     /api/explain: LLM (src/lib/ai/, OpenAI or Gemini) writes the text
    JSON-schema output · validated with zod · numbers checked
-   against the context · falls back to rule-based text on failure
+   against the context · the page keeps the rule text on failure
 ```
+
+The plan and the AI text are two requests, so nobody waits for the model to see their plan: the AI headline and notes replace the rule text a moment later.
 
 The model never calculates. It receives a shortlist of actions with their figures and writes the plain-language briefing and per-household notes. Any output that contains a large number not present in its context is discarded. With no API key, or if the provider fails, the app shows the rules-based text and everything else still works.
 
-Exposure maths: `inhaled µg = PM2.5 (µg/m³) × breathing volume (m³/h) × hours`. Constants (breathing rates, purifier and mask effectiveness, indoor/outdoor ratios, emission factors) are in `K` at the top of `src/lib/engine.ts`. They are rounded published ranges and are labelled as estimates in the UI.
+Exposure maths: `inhaled µg = PM2.5 (µg/m³) × breathing volume (m³/h) × hours`. Every assumption (breathing rates, purifier and mask effectiveness, indoor/outdoor ratios, emission factors, durations, AQI thresholds) is named in `src/lib/engine/constants.ts`, and the "How this is calculated" text quotes those constants, so a change updates the number and its explanation together. They are rounded published ranges and are labelled as estimates in the UI.
 
 ## Run it
 
@@ -63,7 +68,7 @@ Exposure maths: `inhaled µg = PM2.5 (µg/m³) × breathing volume (m³/h) × ho
 npm install
 cp .env.example .env.local   # optional: add OPENAI_API_KEY or GEMINI_API_KEY
 npm run dev                  # http://localhost:3000
-npm run check                # lint + typecheck + 120 tests
+npm run check                # lint + typecheck + 159 tests
 npm run build
 ```
 
@@ -78,7 +83,10 @@ The project's `.npmrc` disables dependency install scripts. GitHub Actions (`.gi
 | `AI_PROVIDER` | Optional. `openai` or `gemini`, used only when both keys are set (default: Gemini) |
 | `OPENAQ_API_KEY` | Optional, recommended. Uses fresh stations within 25 km (under 3 h old, median of up to 5 nearest, reference monitors preferred over low-cost sensors). Raw µg/m³, no conversion. Free key at https://explore.openaq.org/register |
 | `WAQI_TOKEN` | Optional. Fallback when OpenAQ has nothing: the nearest WAQI station (within 40 km, under 6 h old). Free token at https://aqicn.org/data-platform/token/ |
-| `GEMINI_MODEL` | Optional. Defaults to `gemini-flash-latest` |
+| `GEMINI_MODEL` | Optional. Defaults to `gemini-flash-latest`. An unsafe model name turns that provider off |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Optional. Shares rate-limit counters across serverless instances (and the one-per-second Nominatim limit). Without them, limits are counted per instance |
+
+All configuration is read and validated in `src/lib/env.ts`; an invalid value is treated as missing.
 
 ## Deploy (Vercel)
 
@@ -93,13 +101,14 @@ The project's `.npmrc` disables dependency install scripts. GitHub Actions (`.gi
 - The AI model gets coarse household flags and the city name only: no personal names, no coordinates, no free text except the user's question, which is passed as quoted data.
 - API keys are read from the environment on the server and sent in a header, never in a URL or to the browser.
 - Model output is parsed against a schema and rendered as text, never as HTML.
-- Rate limiting is per IP and in memory. On serverless each instance keeps its own counter, so use a shared store (Upstash, Vercel KV) for real traffic.
-- Security headers are set in `next.config.ts`.
+- Rate limiting sits behind one interface (`src/lib/ratelimit.ts`): shared Redis counters when Upstash is configured, per-instance memory otherwise, falling back to memory if Redis is unreachable. The client IP comes from the platform's `x-real-ip`, not from a client-controlled header.
+- Pages get a strict Content Security Policy with a fresh nonce per request (`src/proxy.ts`): only our own scripts run. API replies get `default-src 'none'`. Other security headers are in `next.config.ts`.
+- Every API reply carries an `x-request-id`, and logs are one-line JSON events with no personal data. Errors return a stable `code` and no internals.
 - Nothing is stored server-side. Profile and progress live in `localStorage`.
 
 ## Testing
 
-120 tests (Vitest) cover the AQI maths and breakpoints, exposure and impact calculations, plan logic for different households, English and Hindi output, the API routes (validation, size limits, rate limiting, upstream failure, coordinate rounding), the AI layer for both OpenAI and Gemini (provider choice, request format, schema validation, invented-number guard, prompt-injection framing, no coordinates sent, fallbacks), the station-data sources (OpenAQ freshness, units, plausibility, median, low-cost vs reference, uncertainty flag; WAQI conversion; source priority and fallbacks) and local storage handling. The AI providers and data sources are mocked, so the suite runs offline.
+159 tests (Vitest) cover the AQI maths and breakpoints, exposure and impact calculations, plan logic for different households, English and Hindi output, the API routes (validation, size limits, rate limiting, upstream failure, coordinate rounding), the AI layer for both OpenAI and Gemini (provider choice, request format, schema validation, invented-number guard, prompt-injection framing, no coordinates sent, fallbacks), the station-data sources (OpenAQ freshness, units, plausibility, median, low-cost vs reference, uncertainty flag; WAQI conversion; source priority and fallbacks), local storage handling, the shared infrastructure (cache, rate limiter, config, request helpers, Hindi and English time formatting) and server-rendered components (chart labels, totals, form inputs, no English left in Hindi views). The AI providers and data sources are mocked, so the suite runs offline.
 
 ## Accessibility
 
@@ -114,19 +123,26 @@ The project's `.npmrc` disables dependency install scripts. GitHub Actions (`.gi
 - Without station keys, or where no station is nearby, the air data is a model estimate on a roughly 40 km grid and can differ from local monitors. Station coverage is uneven: Delhi, Jaipur and Chennai have several stations within 11 km, while Kochi has one fresh reference monitor (Eloor, about 16 km away) and a low-cost sensor that reads several times higher, so Kochi is shown as "approximate".
 - OpenAQ readings can lag by one to three hours. WAQI values arrive as US AQI sub-indices and are converted back to µg/m³; against OpenAQ at 11 paired stations that conversion averaged about 13% error, so treat WAQI-derived PM2.5 as roughly ±15%.
 - Estimates for wood and dung burning are indicative; real indoor concentrations vary widely.
+- Caches (air readings per ~1 km cell and AI text, 10 minutes) live in each server instance. A shared cache (Redis) would let instances share them; the upstream fetches are also cached by Next.js.
+- Browser end-to-end tests are run by hand with a headless browser, not in CI.
 - This is not medical advice.
 
 ## Layout
 
 ```
-src/lib/engine.ts     action library, impact maths, plan builder
-src/lib/aqi.ts        CPCB AQI and categories
-src/lib/airdata.ts    Open-Meteo client and normalisation
-src/lib/airsource.ts  picks the air source: OpenAQ, then WAQI, then model
-src/lib/openaq.ts     OpenAQ v3 stations: freshness, units, median, uncertainty
-src/lib/station.ts    WAQI station readings and applying a station to the 24 h curve
-src/lib/ai.ts         LLM layer: OpenAI or Gemini, prompts, validation, number guard
-src/app/api/*         plan, ask, geocode, reverse (place name) routes
-src/components/*      UI (skyline hero, hour strip, actions, tracker, ask)
-tests/                maths, plan logic, API routes, AI guard, storage
+src/app/api/*            thin routes: plan, explain, ask, geocode, reverse
+src/proxy.ts             per-request CSP nonce
+src/lib/http.ts          request id, rate limit, body checks, coded errors
+src/lib/planService.ts   what the routes call: plan, explanation, answer, with caching
+src/lib/engine/          constants, hourly windows, context, rules/ (one file per topic), plan
+src/lib/ai/              providers (OpenAI, Gemini), prompts, number guard
+src/lib/answers.ts       answers without AI, by topic
+src/lib/air*.ts, openaq.ts, station.ts   air sources: OpenAQ, then WAQI, then the model
+src/lib/places.ts        place search and reverse lookup (cached, throttled)
+src/lib/env.ts, cache.ts, ratelimit.ts, log.ts, errors.ts   shared infrastructure
+src/lib/format.ts, i18n.ts   numbers, hours and all text in English and Hindi
+src/lib/client/api.ts    the browser's typed API client
+src/components/hooks/    usePlan, useDoneLog, useLocate, usePlaceSearch
+src/components/*         UI sections; styles in src/app/styles/
+tests/                   unit, API route and component tests
 ```
