@@ -18,7 +18,10 @@ const ERRORS: Record<ErrorCode, { status: number; message: string }> = {
   too_large: { status: 413, message: "Request is too large." },
   bad_json: { status: 400, message: "Request must be valid JSON." },
   invalid: { status: 422, message: "Some details are not valid. Check them and try again." },
-  air_unavailable: { status: 502, message: "Air quality data is not available for this place right now. Try again in a minute." },
+  air_unavailable: {
+    status: 502,
+    message: "Air quality data is not available for this place right now. Try again in a minute.",
+  },
   lookup_unavailable: { status: 502, message: "This lookup is unavailable right now." },
   not_found: { status: 404, message: "Nothing was found." },
   outside_india: { status: 422, message: "Only places in India are supported." },

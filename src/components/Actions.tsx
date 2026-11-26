@@ -168,13 +168,7 @@ export default function Actions({
           <h2 id="more-title">{t.more}</h2>
           <ul className="actions actions--more">
             {ORDER.flatMap((g) => rest.filter((a) => a.group === g)).map((a) => (
-              <ActionItem
-                key={a.id}
-                a={a}
-                lang={lang}
-                isDone={doneIds.has(a.id)}
-                onToggle={onToggle}
-              />
+              <ActionItem key={a.id} a={a} lang={lang} isDone={doneIds.has(a.id)} onToggle={onToggle} />
             ))}
           </ul>
         </section>

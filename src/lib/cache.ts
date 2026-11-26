@@ -35,7 +35,12 @@ export class TtlCache<V> {
   }
 
   /** Returns the cached value, or runs `load` once even when many callers ask at the same time. */
-  async getOrLoad(key: string, ttlMs: number, load: () => Promise<V>, keep: (v: V) => boolean = () => true): Promise<V> {
+  async getOrLoad(
+    key: string,
+    ttlMs: number,
+    load: () => Promise<V>,
+    keep: (v: V) => boolean = () => true,
+  ): Promise<V> {
     const hit = this.get(key);
     if (hit !== undefined) return hit;
     const inFlight = this.pending.get(key);

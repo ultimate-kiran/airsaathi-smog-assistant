@@ -30,9 +30,7 @@ const LocationsSchema = z.object({
       isMonitor: z.boolean().nullish(),
       coordinates: z.object({ latitude: z.number(), longitude: z.number() }),
       datetimeLast: z.object({ utc: z.string() }).nullish(),
-      sensors: z.array(
-        z.object({ id: z.number(), parameter: z.object({ name: z.string(), units: z.string() }) }),
-      ),
+      sensors: z.array(z.object({ id: z.number(), parameter: z.object({ name: z.string(), units: z.string() }) })),
     }),
   ),
 });
@@ -74,7 +72,9 @@ export function pickLocations(raw: unknown, lat: number, lon: number, now = new 
 
 /** Freshest valid value for one parameter at one location (a location can hold several sensors). */
 function freshest(loc: OpenAqLocation, latest: OpenAqLatest, param: string, now: Date) {
-  const ids = new Set(loc.sensors.filter((s) => s.parameter.name === param && s.parameter.units === "µg/m³").map((s) => s.id));
+  const ids = new Set(
+    loc.sensors.filter((s) => s.parameter.name === param && s.parameter.units === "µg/m³").map((s) => s.id),
+  );
   return latest
     .filter((x) => ids.has(x.sensorsId) && x.value !== null && x.value >= 0 && x.value <= PM25_MAX)
     .filter((x) => isRecentReading(x.datetime.utc, now, MAX_AGE_H))
@@ -122,7 +122,7 @@ export function aggregate(cands: OpenAqCandidate[]): StationReading | null {
   const all = cands.map((c) => c.pm25);
   const ratio = Math.max(...all) / Math.max(Math.min(...all), 1);
   const pm10s = used.map((c) => c.pm10).filter((v): v is number => v !== null);
-  const newest = used.reduce((a, b) => Date.parse(a.updatedISO) >= Date.parse(b.updatedISO) ? a : b);
+  const newest = used.reduce((a, b) => (Date.parse(a.updatedISO) >= Date.parse(b.updatedISO) ? a : b));
   return {
     name: used.length === 1 ? used[0].name : `${used.length} stations`,
     km: Math.max(...used.map((c) => c.km)),

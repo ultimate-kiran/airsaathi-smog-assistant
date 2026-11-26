@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { APPROXIMATE_OVER_M, GeoError, formatAccuracy, locate, round2 } from "../src/lib/geo";
+import { toGrid } from "../src/lib/distance";
+import { APPROXIMATE_OVER_M, GeoError, formatAccuracy, locate } from "../src/lib/geo";
 
 type Ok = (p: GeolocationPosition) => void;
 type Err = (e: GeolocationPositionError) => void;
@@ -137,8 +138,8 @@ describe("locate", () => {
 
 describe("helpers", () => {
   it("rounds to about 1 km", () => {
-    expect(round2(9.939876)).toBe(9.94);
-    expect(round2(76.260222)).toBe(76.26);
+    expect(toGrid(9.939876)).toBe(9.94);
+    expect(toGrid(76.260222)).toBe(76.26);
   });
 
   it("formats accuracy in metres under a kilometre and kilometres above", () => {

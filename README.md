@@ -68,7 +68,8 @@ Exposure maths: `inhaled µg = PM2.5 (µg/m³) × breathing volume (m³/h) × ho
 npm install
 cp .env.example .env.local   # optional: add OPENAI_API_KEY or GEMINI_API_KEY
 npm run dev                  # http://localhost:3000
-npm run check                # lint + typecheck + 159 tests
+npm run check                # format check + lint + typecheck + 176 tests
+npm run format               # apply Prettier formatting
 npm run build
 ```
 

@@ -91,5 +91,3 @@ export async function fetchStation(lat: number, lon: number): Promise<StationRea
     return null; // never fail the plan because the optional source is down
   }
 }
-
-export { applyStation } from "./stationReading";

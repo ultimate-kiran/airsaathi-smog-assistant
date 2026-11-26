@@ -17,7 +17,6 @@ interface Props {
   onCancel: () => void;
 }
 
-
 /** A person counter: big + and − buttons, easier than a number box on a phone. */
 function Stepper({
   label,
@@ -167,15 +166,37 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
           <fieldset className="q">
             <legend>{t.household}</legend>
             <div className="steppers">
-              <Stepper label={t.adults} value={p.household.adults} min={1} max={12} onChange={(n) => hh({ adults: n })} />
-              <Stepper label={t.children} value={p.household.children} min={0} max={12} onChange={(n) => hh({ children: n })} />
-              <Stepper label={t.elders} value={p.household.elders} min={0} max={12} onChange={(n) => hh({ elders: n })} />
+              <Stepper
+                label={t.adults}
+                value={p.household.adults}
+                min={1}
+                max={12}
+                onChange={(n) => hh({ adults: n })}
+              />
+              <Stepper
+                label={t.children}
+                value={p.household.children}
+                min={0}
+                max={12}
+                onChange={(n) => hh({ children: n })}
+              />
+              <Stepper
+                label={t.elders}
+                value={p.household.elders}
+                min={0}
+                max={12}
+                onChange={(n) => hh({ elders: n })}
+              />
             </div>
           </fieldset>
           <fieldset className="q">
             <legend>{t.healthPrompt}</legend>
             <div className="toggles">
-              <Toggle label={t.respiratory} checked={p.household.respiratory} onChange={(b) => hh({ respiratory: b })} />
+              <Toggle
+                label={t.respiratory}
+                checked={p.household.respiratory}
+                onChange={(b) => hh({ respiratory: b })}
+              />
               <Toggle label={t.heart} checked={p.household.heart} onChange={(b) => hh({ heart: b })} />
               <Toggle label={t.pregnant} checked={p.household.pregnant} onChange={(b) => hh({ pregnant: b })} />
             </div>

@@ -103,5 +103,7 @@ export function ruleAnswer(question: string, plan: PlanResponse, lang: Lang): st
   }
   const top = plan.actions[0];
   if (top) return `${top.title}. ${top.why}${windowLine}`;
-  return lang === "hi" ? "आज हवा ठीक है। सामान्य सावधानियाँ काफ़ी हैं।" : "The air looks fine today, so normal routines are fine.";
+  return lang === "hi"
+    ? "आज हवा ठीक है। सामान्य सावधानियाँ काफ़ी हैं।"
+    : "The air looks fine today, so normal routines are fine.";
 }

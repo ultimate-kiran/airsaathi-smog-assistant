@@ -65,7 +65,12 @@ describe("GET /api/reverse", () => {
     const res = await reverse(get("lat=28.612345&lon=77.039876"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.place).toMatchObject({ short: "Dwarka, New Delhi", name: "Dwarka, New Delhi, Delhi", lat: 28.61, lon: 77.04 });
+    expect(body.place).toMatchObject({
+      short: "Dwarka, New Delhi",
+      name: "Dwarka, New Delhi, Delhi",
+      lat: 28.61,
+      lon: 77.04,
+    });
     const url = String(f.mock.calls[0][0]);
     expect(url).toContain("lat=28.61&lon=77.04");
     expect(url).not.toContain("28.612345");
@@ -90,22 +95,40 @@ describe("GET /api/reverse", () => {
   });
 
   it("refuses a result that is outside India", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ address: { city: "Dhaka", country_code: "bd" } })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ address: { city: "Dhaka", country_code: "bd" } })),
+    );
     expect((await reverse(get("lat=23.8&lon=90.4"))).status).toBe(422);
   });
 
   it("answers 404 when the point has no name, and 502 when the service is down", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ address: { country_code: "in" } })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ address: { country_code: "in" } })),
+    );
     expect((await reverse(get("lat=20&lon=80"))).status).toBe(404);
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({}, 503)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({}, 503)),
+    );
     expect((await reverse(get("lat=20&lon=81"))).status).toBe(502);
-    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("offline");
+      }),
+    );
     expect((await reverse(get("lat=20&lon=82"))).status).toBe(502);
   });
 
   it("is rate limited per client", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(found)));
-    const req = () => new Request("http://localhost/api/reverse?lat=28.6&lon=77", { headers: { "x-forwarded-for": "203.0.113.9" } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(found)),
+    );
+    const req = () =>
+      new Request("http://localhost/api/reverse?lat=28.6&lon=77", { headers: { "x-forwarded-for": "203.0.113.9" } });
     let last = 200;
     for (let i = 0; i < 31; i++) last = (await reverse(req())).status;
     expect(last).toBe(429);
@@ -114,16 +137,35 @@ describe("GET /api/reverse", () => {
 
 describe("nameFor", () => {
   it("returns the name from the API", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ place: { name: "Dwarka, New Delhi, Delhi", short: "Dwarka, New Delhi", lat: 1, lon: 2 } })));
-    await expect(nameFor(28.61, 77.04)).resolves.toEqual({ name: "Dwarka, New Delhi, Delhi", short: "Dwarka, New Delhi" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({ place: { name: "Dwarka, New Delhi, Delhi", short: "Dwarka, New Delhi", lat: 1, lon: 2 } }),
+      ),
+    );
+    await expect(nameFor(28.61, 77.04)).resolves.toEqual({
+      name: "Dwarka, New Delhi, Delhi",
+      short: "Dwarka, New Delhi",
+    });
   });
 
   it("returns null on any failure so the caller can keep a generic label", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "x" }, 404)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ error: "x" }, 404)),
+    );
     await expect(nameFor(28.61, 77.04)).resolves.toBeNull();
-    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("offline");
+      }),
+    );
     await expect(nameFor(28.61, 77.04)).resolves.toBeNull();
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ place: {} })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ place: {} })),
+    );
     await expect(nameFor(28.61, 77.04)).resolves.toBeNull();
   });
 });

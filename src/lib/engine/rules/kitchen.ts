@@ -26,5 +26,10 @@ export const cookingFuel: Rule = (c) => {
 
 export const kitchenExhaust: Rule = (c) => {
   if (c.p.cooking !== "lpg" && c.p.cooking !== "png") return null;
-  return makeAction(c, { id: "kitchen-exhaust", group: "kitchen", text: COPY["kitchen-exhaust"](), forWhom: [WHO.cook] });
+  return makeAction(c, {
+    id: "kitchen-exhaust",
+    group: "kitchen",
+    text: COPY["kitchen-exhaust"](),
+    forWhom: [WHO.cook],
+  });
 };

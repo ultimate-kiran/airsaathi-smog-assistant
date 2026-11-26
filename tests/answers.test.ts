@@ -21,7 +21,10 @@ describe("ruleAnswer", () => {
   });
 
   it("uses the plan's own mask action when there is one", () => {
-    const plan = buildPlan({ ...walker, commute: { mode: "bike", km: 10 } }, snapshotFromOpenMeteo(openMeteoPayload(140, 200)));
+    const plan = buildPlan(
+      { ...walker, commute: { mode: "bike", km: 10 } },
+      snapshotFromOpenMeteo(openMeteoPayload(140, 200)),
+    );
     expect(ruleAnswer("which mask?", plan, "en")).toMatch(/^Wear a fitted N95/);
   });
 

@@ -17,7 +17,15 @@ interface LocOpts {
 }
 
 /** A /v3/locations result carrying a pm25 sensor (id = loc id + 1) and a pm10 sensor (id + 2). */
-function loc({ id = 1, name = "Eloor", monitor = true, last = "2026-11-23T09:00:00Z", lat = 10.07, lon = 76.3, units = UG }: LocOpts = {}) {
+function loc({
+  id = 1,
+  name = "Eloor",
+  monitor = true,
+  last = "2026-11-23T09:00:00Z",
+  lat = 10.07,
+  lon = 76.3,
+  units = UG,
+}: LocOpts = {}) {
   return {
     id,
     name,

@@ -58,7 +58,9 @@ function Layer({ blocks, fill, opacity, glow }: { blocks: Block[]; fill: string;
       {glow > 0 && (
         <g fill="#f6c872" opacity={glow}>
           {blocks.flatMap((b, i) =>
-            b.lights.map(([dx, dy], j) => <rect key={`${i}-${j}`} x={b.x + dx} y={H - b.h + dy} width="5" height="7" rx="1" />),
+            b.lights.map(([dx, dy], j) => (
+              <rect key={`${i}-${j}`} x={b.x + dx} y={H - b.h + dy} width="5" height="7" rx="1" />
+            )),
           )}
         </g>
       )}

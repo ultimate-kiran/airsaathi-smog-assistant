@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { api, isAbort } from "@/lib/client/api";
 import { PLACE_QUERY_LENGTH, type Place } from "@/lib/types";
 
-export type { Place };
-
 const DEBOUNCE_MS = 300;
 
 /** Debounced place search. Short queries show no list; stale requests are cancelled. */

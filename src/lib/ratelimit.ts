@@ -97,6 +97,10 @@ export function clientIp(req: Request): string {
   const real = req.headers.get("x-real-ip")?.trim();
   if (real) return real;
   const fwd = req.headers.get("x-forwarded-for");
-  const last = fwd?.split(",").map((s) => s.trim()).filter(Boolean).at(-1);
+  const last = fwd
+    ?.split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .at(-1);
   return last || "unknown";
 }

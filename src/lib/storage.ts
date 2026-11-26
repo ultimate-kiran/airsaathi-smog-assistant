@@ -41,10 +41,7 @@ export function loadDone(): DoneLog {
   for (const [day, entries] of Object.entries(raw as Record<string, unknown>)) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Array.isArray(entries)) continue;
     out[day] = entries
-      .filter(
-        (e): e is DoneEntry =>
-          !!e && typeof e.id === "string" && Number.isFinite(e.ug) && Number.isFinite(e.co2),
-      )
+      .filter((e): e is DoneEntry => !!e && typeof e.id === "string" && Number.isFinite(e.ug) && Number.isFinite(e.co2))
       .map((e) => ({ id: e.id.slice(0, 40), ug: e.ug, co2: e.co2 }));
   }
   return out;

@@ -104,7 +104,12 @@ const PROVIDERS: Record<Provider, ModelClient> = {
           // Reasoning models reject a custom temperature, so only send it to the GPT-4 family.
           ...(/^gpt-4/.test(cfg.model) ? { temperature: r.temperature } : {}),
           ...(r.schema
-            ? { response_format: { type: "json_schema", json_schema: { name: "briefing", strict: true, schema: r.schema } } }
+            ? {
+                response_format: {
+                  type: "json_schema",
+                  json_schema: { name: "briefing", strict: true, schema: r.schema },
+                },
+              }
             : {}),
         },
         r.timeoutMs,

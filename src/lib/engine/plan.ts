@@ -55,7 +55,9 @@ export function ruleSummary(
   const parts: string[] = [];
   if (best) {
     const w = formatRange(best, lang);
-    parts.push(lang === "hi" ? `सबसे साफ़ समय ${w} (AQI लगभग ${best.aqi})।` : `Cleanest hours: ${w} (AQI about ${best.aqi}).`);
+    parts.push(
+      lang === "hi" ? `सबसे साफ़ समय ${w} (AQI लगभग ${best.aqi})।` : `Cleanest hours: ${w} (AQI about ${best.aqi}).`,
+    );
   }
   if (top) parts.push(lang === "hi" ? `सबसे पहले: ${top.title}।` : `Start with: ${top.title}.`);
   return { source: "rules", headline, summary: parts.join(" "), familyTips: [] };

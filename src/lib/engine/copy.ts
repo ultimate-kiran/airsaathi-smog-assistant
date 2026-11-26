@@ -118,7 +118,10 @@ export const COPY = {
     const w = range(p.window);
     const mins = r0(TIME.KIDS_PLAY_H * 60);
     return {
-      title: L(`Let children play outside at ${w.en}, not after school`, `बच्चों को स्कूल के बाद नहीं, ${w.hi} खेलने दें`),
+      title: L(
+        `Let children play outside at ${w.en}, not after school`,
+        `बच्चों को स्कूल के बाद नहीं, ${w.hi} खेलने दें`,
+      ),
       why: L(
         `Children breathe faster for their size and their lungs are still growing. ${w.en} is today's cleanest hour (AQI about ${p.aqi}); late afternoon and evening are usually worse as traffic builds and the air cools.`,
         `बच्चे अपने आकार के हिसाब से तेज़ साँस लेते हैं और उनके फेफड़े अभी बढ़ रहे हैं। ${w.hi} आज का सबसे साफ़ समय है (AQI लगभग ${p.aqi}); शाम को ट्रैफ़िक और ठंड से हवा आम तौर पर बिगड़ती है।`,
@@ -178,7 +181,10 @@ export const COPY = {
 
   "bedroom-purifier": (p: { has: boolean; nightPm25: number }) => ({
     title: p.has
-      ? L("Run your purifier in the bedroom all night, door shut", "प्यूरीफ़ायर को पूरी रात बेडरूम में, दरवाज़ा बंद करके चलाएँ")
+      ? L(
+          "Run your purifier in the bedroom all night, door shut",
+          "प्यूरीफ़ायर को पूरी रात बेडरूम में, दरवाज़ा बंद करके चलाएँ",
+        )
       : L("Set up one HEPA purifier in the bedroom", "बेडरूम में एक HEPA प्यूरीफ़ायर लगाएँ"),
     why: p.has
       ? L(
@@ -199,7 +205,10 @@ export const COPY = {
     const w = p.window ? range(p.window) : null;
     return {
       title: w
-        ? L(`Keep windows shut, and air the house for 10 minutes at ${w.en}`, `खिड़कियाँ बंद रखें, और ${w.hi} 10 मिनट घर में हवा आने दें`)
+        ? L(
+            `Keep windows shut, and air the house for 10 minutes at ${w.en}`,
+            `खिड़कियाँ बंद रखें, और ${w.hi} 10 मिनट घर में हवा आने दें`,
+          )
         : L("Keep windows shut and air the house briefly", "खिड़कियाँ बंद रखें और थोड़ी देर के लिए हवा आने दें"),
       why: L(
         "Open windows let most of the outdoor smoke straight in. Sealing gaps with draught strips and airing once, in the cleanest hour, keeps stale indoor air from building up without inviting the worst of the smog.",
@@ -221,7 +230,10 @@ export const COPY = {
   }),
 
   "stop-indoor-burning": () => ({
-    title: L("Swap the wood or coal fire for layers and an electric heater", "लकड़ी या कोयले की अँगीठी की जगह गर्म कपड़े और इलेक्ट्रिक हीटर लें"),
+    title: L(
+      "Swap the wood or coal fire for layers and an electric heater",
+      "लकड़ी या कोयले की अँगीठी की जगह गर्म कपड़े और इलेक्ट्रिक हीटर लें",
+    ),
     why: L(
       "A wood or coal fire in a closed room fills it with fine smoke and carbon monoxide, and it pours more into the neighbourhood air at night. A low-wattage oil-filled heater, a hot-water bottle, and warm layers do the job without the smoke.",
       "बंद कमरे में लकड़ी या कोयले की आग महीन धुआँ और कार्बन मोनोऑक्साइड भर देती है, और रात में आस-पड़ोस की हवा भी बिगाड़ती है। कम वॉट का ऑयल हीटर, गर्म पानी की बोतल और गर्म कपड़े बिना धुएँ के काम करते हैं।",
@@ -253,7 +265,10 @@ export const COPY = {
   }),
 
   "sensitive-plan": () => ({
-    title: L("Keep medicines and your doctor's action plan within reach", "दवाइयाँ और डॉक्टर की एक्शन प्लान हाथ के पास रखें"),
+    title: L(
+      "Keep medicines and your doctor's action plan within reach",
+      "दवाइयाँ और डॉक्टर की एक्शन प्लान हाथ के पास रखें",
+    ),
     why: L(
       "Smog days are when asthma, COPD and heart conditions flare. Keep the reliever inhaler and regular medicines stocked, avoid hard effort outdoors, and know the warning signs: breathlessness, wheeze, chest tightness or unusual tiredness. If they appear and do not settle with your usual medicine, contact your doctor or an emergency service.",
       "स्मॉग के दिनों में दमा, COPD और दिल की बीमारियाँ बढ़ जाती हैं। रिलीवर इन्हेलर और नियमित दवाइयाँ पर्याप्त रखें, बाहर भारी मेहनत से बचें और चेतावनी के संकेत पहचानें: साँस फूलना, घरघराहट, सीने में जकड़न या असामान्य थकान। ये दिखें और आपकी दवा से न थमें तो डॉक्टर या आपातकालीन सेवा से संपर्क करें।",
@@ -261,7 +276,10 @@ export const COPY = {
   }),
 
   "no-open-burning": () => ({
-    title: L("Do not burn leaves or rubbish, and tell your society to stop it", "पत्ते या कचरा न जलाएँ, और अपनी सोसायटी में भी रुकवाएँ"),
+    title: L(
+      "Do not burn leaves or rubbish, and tell your society to stop it",
+      "पत्ते या कचरा न जलाएँ, और अपनी सोसायटी में भी रुकवाएँ",
+    ),
     why: L(
       "Small fires of leaves, plastic and trash smoulder for hours and release fine particles and toxic fumes right where people live. Ask your RWA, school or guards to arrange waste collection instead, and report open burning through your city helpline or the CPCB Sameer app.",
       "पत्तों, प्लास्टिक और कचरे की छोटी आग घंटों सुलगती है और ठीक वहीं महीन कण और ज़हरीला धुआँ छोड़ती है जहाँ लोग रहते हैं। RWA, स्कूल या गार्ड से कचरा उठवाने को कहें और खुले में जलाने की शिकायत शहर की हेल्पलाइन या CPCB के समीर ऐप पर करें।",

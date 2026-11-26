@@ -11,7 +11,13 @@ import { tools, type ToolsStrings } from "./tools";
  */
 export type Strings = CommonStrings & PlaceStrings & FormStrings & PlanStrings & ToolsStrings;
 
-const merge = (lang: Lang): Strings => ({ ...common[lang], ...place[lang], ...form[lang], ...plan[lang], ...tools[lang] });
+const merge = (lang: Lang): Strings => ({
+  ...common[lang],
+  ...place[lang],
+  ...form[lang],
+  ...plan[lang],
+  ...tools[lang],
+});
 
 export const UI: Record<Lang, Strings> = { en: merge("en"), hi: merge("hi") };
 

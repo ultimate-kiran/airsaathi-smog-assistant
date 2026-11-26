@@ -95,12 +95,9 @@ export function locate(geo: GeoLike | undefined, opts: LocateOptions = {}): Prom
     }
 
     s.settleTimer = setTimeout(succeed, settleMs);
-    s.hardTimer = setTimeout(() => s.best ? succeed() : fail("timeout"), timeoutMs + 1000);
+    s.hardTimer = setTimeout(() => (s.best ? succeed() : fail("timeout")), timeoutMs + 1000);
   });
 }
-
-/** About 1 km, which is as precise as the air data can use and as precise as the server keeps. */
-export { toGrid as round2 } from "./distance";
 
 /** "35 m" under a kilometre, "2.4 km" above. */
 export function formatAccuracy(m: number): string {

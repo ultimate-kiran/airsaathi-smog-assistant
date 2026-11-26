@@ -61,5 +61,3 @@ export const BRIEFING_PROMPT =
 
 export const ANSWER_RULES =
   " Answer the family's question using the context. If the context does not cover it, say so briefly and give the safest general advice. Maximum 90 words.";
-
-export { BRIEFING_SCHEMA } from "./briefing";

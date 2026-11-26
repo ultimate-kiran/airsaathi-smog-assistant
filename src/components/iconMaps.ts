@@ -10,6 +10,11 @@ export const MODE_ICON: Record<CommuteMode, IconName> = {
   walk: "walk",
   wfh: "home",
 };
-export const COOKING_ICON: Record<CookingFuel, IconName> = { lpg: "lpg", png: "png", induction: "induction", biomass: "wood" };
+export const COOKING_ICON: Record<CookingFuel, IconName> = {
+  lpg: "lpg",
+  png: "png",
+  induction: "induction",
+  biomass: "wood",
+};
 export const HEATING_ICON: Record<HeatingType, IconName> = { none: "none", electric: "heater", biomass: "wood" };
 export const WINDOW_ICON: Record<WindowHabit, IconName> = { open: "windowOpen", "mostly-closed": "windowShut" };

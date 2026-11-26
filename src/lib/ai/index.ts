@@ -85,4 +85,3 @@ export async function answerWithAi(question: string, plan: PlanResponse, p: Prof
   const clean = text.trim().slice(0, 900);
   return numbersGrounded(clean, ctx) ? clean : fallback("answer", "ungrounded");
 }
-

@@ -10,13 +10,15 @@ const AirSchema = z.object({
     pm2_5: z.number().nullable(),
     pm10: z.number().nullable(),
   }),
-  hourly: z.object({
-    time: z.array(z.string()),
-    pm2_5: z.array(z.number().nullable()),
-    pm10: z.array(z.number().nullable()),
-  }).refine(({ time, pm2_5, pm10 }) => time.length === pm2_5.length && time.length === pm10.length, {
-    message: "Hourly timestamps and pollutant readings must have matching lengths",
-  }),
+  hourly: z
+    .object({
+      time: z.array(z.string()),
+      pm2_5: z.array(z.number().nullable()),
+      pm10: z.array(z.number().nullable()),
+    })
+    .refine(({ time, pm2_5, pm10 }) => time.length === pm2_5.length && time.length === pm10.length, {
+      message: "Hourly timestamps and pollutant readings must have matching lengths",
+    }),
 });
 
 export interface AirSnapshot {
@@ -67,10 +69,7 @@ export function snapshotFromOpenMeteo(raw: unknown): AirSnapshot {
   if (hours.length < 12) throw new Error("Not enough forecast hours returned");
 
   const cur = parsed.current;
-  const current =
-    cur.pm2_5 !== null && cur.pm10 !== null
-      ? makePoint(cur.time, cur.pm2_5, cur.pm10, true)
-      : hours[0];
+  const current = cur.pm2_5 !== null && cur.pm10 !== null ? makePoint(cur.time, cur.pm2_5, cur.pm10, true) : hours[0];
 
   return { current, hours, fetchedAt: new Date().toISOString(), source: { kind: "model" } };
 }

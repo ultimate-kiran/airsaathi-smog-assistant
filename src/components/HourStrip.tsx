@@ -22,7 +22,11 @@ export default function HourStrip({ plan, lang }: { plan: PlanResponse; lang: La
   const { hours, bestWindow, avoid } = plan;
   // Scale to the day's own peak (never below 100) so a clean day still shows its shape.
   const top = Math.max(100, ...hours.map((h) => h.aqi));
-  const avoidSet = avoid ? (avoid.allDay ? new Set(hours.map((_, i) => i)) : indicesIn(hours, avoid)) : new Set<number>();
+  const avoidSet = avoid
+    ? avoid.allDay
+      ? new Set(hours.map((_, i) => i))
+      : indicesIn(hours, avoid)
+    : new Set<number>();
   const bestIdx = bestWindow ? hours.findIndex((h) => h.hour === bestWindow.start) : -1;
 
   return (

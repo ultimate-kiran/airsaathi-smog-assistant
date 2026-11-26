@@ -41,7 +41,13 @@ export default function Header({ lang, onLang }: { lang: Lang; onLang: (l: Lang)
         </div>
         <div className="lang" role="group" aria-label={t.language}>
           {LANGS.map((l) => (
-            <button key={l.lang} type="button" aria-pressed={lang === l.lang} onClick={() => onLang(l.lang)} lang={l.lang}>
+            <button
+              key={l.lang}
+              type="button"
+              aria-pressed={lang === l.lang}
+              onClick={() => onLang(l.lang)}
+              lang={l.lang}
+            >
               {l.label}
             </button>
           ))}

@@ -92,7 +92,8 @@ describe("TtlCache", () => {
 describe("rate limiting", () => {
   it("uses a rotated token for the same Redis URL", async () => {
     const transport = vi.fn(async (_url: string, _init: RequestInit) =>
-      jsonResponse([{ result: 1 }, { result: 1 }, { result: null }]));
+      jsonResponse([{ result: 1 }, { result: 1 }, { result: null }]),
+    );
     vi.stubGlobal("fetch", transport);
     try {
       vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://redis.example");
@@ -100,8 +101,10 @@ describe("rate limiting", () => {
       await limiter().hit("key", 2, 1000);
       vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "example-token-two");
       await limiter().hit("key", 2, 1000);
-      expect(transport.mock.calls.map(([, init]) => new Headers(init.headers).get("authorization")))
-        .toEqual(["Bearer example-token-one", "Bearer example-token-two"]);
+      expect(transport.mock.calls.map(([, init]) => new Headers(init.headers).get("authorization"))).toEqual([
+        "Bearer example-token-one",
+        "Bearer example-token-two",
+      ]);
     } finally {
       vi.unstubAllEnvs();
     }
@@ -118,10 +121,18 @@ describe("rate limiting", () => {
   it("uses Redis counts when available, and falls back to memory when Redis fails", async () => {
     const fallback = new MemoryLimiter();
     const up = new UpstashLimiter("https://redis.example", "tok_1234567890", fallback);
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse([{ result: 3 }, { result: 1 }, { result: null }])));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse([{ result: 3 }, { result: 1 }, { result: null }])),
+    );
     expect(await up.hit("k", 2, 60_000)).toBe(false);
     vi.spyOn(console, "warn").mockImplementation(() => {});
-    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("down"); }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("down");
+      }),
+    );
     expect(await up.hit("k", 2, 60_000)).toBe(true);
   });
 
@@ -130,7 +141,10 @@ describe("rate limiting", () => {
     vi.setSystemTime(new Date(Math.ceil(Date.now() / 60_000) * 60_000 + 15_000)); // a quarter into a window
     const up = new UpstashLimiter("https://redis.example", "tok_1234567890", new MemoryLimiter());
     // 2 hits so far in this window, 10 in the previous one: 2 + 10 × 0.75 = 9.5
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse([{ result: 2 }, { result: 1 }, { result: "10" }])));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse([{ result: 2 }, { result: 1 }, { result: "10" }])),
+    );
     expect(await up.hit("k", 9, 60_000)).toBe(false);
     expect(await up.hit("k", 10, 60_000)).toBe(true);
   });

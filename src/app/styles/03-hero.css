@@ -9,7 +9,11 @@
   color: #fff;
   background:
     radial-gradient(820px 380px at 84% 6%, color-mix(in srgb, var(--sun) 20%, transparent), transparent 70%),
-    linear-gradient(180deg, color-mix(in srgb, var(--tint, #1c7d52) 22%, #081621) 0%, color-mix(in srgb, var(--tint, #1c7d52) 38%, #12303b) 100%);
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--tint, #1c7d52) 22%, #081621) 0%,
+      color-mix(in srgb, var(--tint, #1c7d52) 38%, #12303b) 100%
+    );
 }
 
 /* Keeps white text readable whatever colour the sky takes on. */
@@ -35,7 +39,12 @@
 }
 
 .skyline-haze {
-  background: linear-gradient(180deg, rgba(196, 146, 84, 0) 0%, rgba(196, 146, 84, 0.5) 55%, rgba(150, 104, 58, 0.88) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(196, 146, 84, 0) 0%,
+    rgba(196, 146, 84, 0.5) 55%,
+    rgba(150, 104, 58, 0.88) 100%
+  );
 }
 
 .sk-layer,
@@ -357,4 +366,3 @@
   font-weight: 600;
   color: rgba(255, 255, 255, 0.85);
 }
-

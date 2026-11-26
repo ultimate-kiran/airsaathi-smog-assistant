@@ -126,9 +126,7 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M12 7.5V12l3 2" />
     </>
   ),
-  leaf: (
-    <path d="M5 19c0-8 4-13 14-14 0 9-4.5 14-12 14M5 19c2-3.5 5-6 8-7.5" />
-  ),
+  leaf: <path d="M5 19c0-8 4-13 14-14 0 9-4.5 14-12 14M5 19c2-3.5 5-6 8-7.5" />,
   alert: (
     <>
       <path d="M12 4 3 19.5h18L12 4Z" />

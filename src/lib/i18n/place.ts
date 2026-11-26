@@ -49,9 +49,18 @@ export const place: Record<Lang, PlaceStrings> = {
     cigarettes: (n) => `Breathing today's air is roughly like smoking ${n} cigarette${n === 1 ? "" : "s"}.`,
     stepsTitle: "How it works",
     steps: [
-      { title: "Pick your place", text: "Search your city or use your location to see how clean the air is right now." },
-      { title: "Tell us about your home", text: "Who lives there, how you travel, what you cook on. It takes under a minute." },
-      { title: "Get a plan that fits", text: "The cleanest hours, steps ranked for your family, and what each one saves in PM2.5 and CO₂." },
+      {
+        title: "Pick your place",
+        text: "Search your city or use your location to see how clean the air is right now.",
+      },
+      {
+        title: "Tell us about your home",
+        text: "Who lives there, how you travel, what you cook on. It takes under a minute.",
+      },
+      {
+        title: "Get a plan that fits",
+        text: "The cleanest hours, steps ranked for your family, and what each one saves in PM2.5 and CO₂.",
+      },
     ],
     locFound: (a) => `Location found, accurate to about ${a}. Air data comes from the stations nearest to you.`,
     locApprox: (a) =>
@@ -84,8 +93,14 @@ export const place: Record<Lang, PlaceStrings> = {
     stepsTitle: "यह कैसे काम करता है",
     steps: [
       { title: "अपनी जगह चुनें", text: "अपना शहर खोजें या लोकेशन इस्तेमाल करें और देखें कि अभी हवा कितनी साफ़ है।" },
-      { title: "अपने घर के बारे में बताएँ", text: "घर में कौन रहता है, आप कैसे सफ़र करते हैं, खाना किस पर बनता है। एक मिनट से कम लगता है।" },
-      { title: "अपने हिसाब का प्लान पाएँ", text: "सबसे साफ़ घंटे, आपके परिवार के लिए क्रम से कदम, और हर कदम से PM2.5 व CO₂ में कितनी बचत।" },
+      {
+        title: "अपने घर के बारे में बताएँ",
+        text: "घर में कौन रहता है, आप कैसे सफ़र करते हैं, खाना किस पर बनता है। एक मिनट से कम लगता है।",
+      },
+      {
+        title: "अपने हिसाब का प्लान पाएँ",
+        text: "सबसे साफ़ घंटे, आपके परिवार के लिए क्रम से कदम, और हर कदम से PM2.5 व CO₂ में कितनी बचत।",
+      },
     ],
     locFound: (a) => `लोकेशन मिल गई, लगभग ${a} तक सटीक। हवा का डेटा आपके सबसे नज़दीकी स्टेशनों से आता है।`,
     locApprox: (a) =>

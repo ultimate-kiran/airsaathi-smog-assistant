@@ -8,8 +8,6 @@ import type { Lang, Place } from "./types";
 
 /** Forward search (Open-Meteo) and reverse lookup (OpenStreetMap Nominatim) for Indian places. */
 
-export type { Place };
-
 const SearchSchema = z.object({
   results: z
     .array(
@@ -74,7 +72,11 @@ async function lookupAddress(lat: number, lon: number, lang: Lang): Promise<Plac
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=${lang === "hi" ? "hi,en" : "en"}&lat=${lat}&lon=${lon}`,
-      { headers: { "User-Agent": "AirSaathi-smog-assistant" }, signal: AbortSignal.timeout(6000), next: { revalidate: 86_400 } },
+      {
+        headers: { "User-Agent": "AirSaathi-smog-assistant" },
+        signal: AbortSignal.timeout(6000),
+        next: { revalidate: 86_400 },
+      },
     );
     if (!res.ok) throw new Error("upstream");
     data = ResultSchema.parse(await res.json());

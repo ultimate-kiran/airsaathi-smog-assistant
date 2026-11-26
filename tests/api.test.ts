@@ -18,7 +18,10 @@ afterEach(() => {
 
 describe("POST /api/plan", () => {
   it("returns a rule-based plan from live-shaped data", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(openMeteoPayload())));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(openMeteoPayload())),
+    );
     const res = await plan(post("/api/plan", PROFILE));
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
@@ -49,14 +52,20 @@ describe("POST /api/plan", () => {
   });
 
   it("returns 502 with a friendly message when the data source is down", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({}, 500)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({}, 500)),
+    );
     const res = await plan(post("/api/plan", PROFILE));
     expect(res.status).toBe(502);
     expect(JSON.stringify(await res.json())).not.toMatch(/stack|at \w+\(/i);
   });
 
   it("rate limits a single client", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(openMeteoPayload())));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(openMeteoPayload())),
+    );
     const ip = "203.0.113.9";
     const codes: number[] = [];
     for (let i = 0; i < 22; i++) codes.push((await plan(post("/api/plan", PROFILE, ip))).status);
@@ -188,7 +197,10 @@ describe("POST /api/plan source priority", () => {
 
 describe("POST /api/ask", () => {
   it("answers with rules when AI is off", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(openMeteoPayload())));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(openMeteoPayload())),
+    );
     const res = await ask(post("/api/ask", { question: "Should my child play outside?", profile: PROFILE }));
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -208,7 +220,9 @@ describe("GET /api/geocode", () => {
 
   it("asks only for places in India", async () => {
     const f = vi.fn(async (_url: string) =>
-      jsonResponse({ results: [{ name: "Kochi", admin1: "Kerala", country: "India", latitude: 9.94, longitude: 76.26 }] }),
+      jsonResponse({
+        results: [{ name: "Kochi", admin1: "Kerala", country: "India", latitude: 9.94, longitude: 76.26 }],
+      }),
     );
     vi.stubGlobal("fetch", f);
     const res = await geocode(get("Kochi", "198.51.100.1"));

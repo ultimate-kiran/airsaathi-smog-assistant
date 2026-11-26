@@ -29,6 +29,8 @@ export function placeName(a: Address): { name: string; short: string } | null {
   if (parts.length === 0) return null;
   return {
     short: parts.join(", ").slice(0, 60),
-    name: unique([...parts, a.state]).join(", ").slice(0, 100),
+    name: unique([...parts, a.state])
+      .join(", ")
+      .slice(0, 100),
   };
 }

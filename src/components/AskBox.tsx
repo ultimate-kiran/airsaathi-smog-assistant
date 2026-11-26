@@ -49,7 +49,13 @@ export default function AskBox({ profile }: { profile: Profile }) {
         <label htmlFor={id} className="sr-only">
           {t.askTitle}
         </label>
-        <input id={id} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.askPlaceholder} maxLength={QUESTION_LENGTH.max} />
+        <input
+          id={id}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={t.askPlaceholder}
+          maxLength={QUESTION_LENGTH.max}
+        />
         <button className="btn btn--primary" type="submit" disabled={busy || q.trim().length < QUESTION_LENGTH.min}>
           {busy ? t.asking : t.askButton}
           {!busy && <Icon name="send" size={18} />}

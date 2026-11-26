@@ -48,7 +48,12 @@ async function request<S extends z.ZodType>(schema: S, path: string, init: Reque
 }
 
 const post = <S extends z.ZodType>(schema: S, path: string, body: unknown, signal?: AbortSignal) =>
-  request(schema, path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
+  request(schema, path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
 
 export type PlaceResult = Place;
 
@@ -59,7 +64,11 @@ export const api = {
   ask: (question: string, profile: Profile, signal?: AbortSignal) =>
     post(AskReplySchema, "/api/ask", { question, profile }, signal),
   search: (q: string, signal?: AbortSignal) =>
-    request(z.object({ places: z.array(PlaceSchema) }), `/api/geocode?q=${encodeURIComponent(q)}`, { signal }).then((d) => d.places),
+    request(z.object({ places: z.array(PlaceSchema) }), `/api/geocode?q=${encodeURIComponent(q)}`, { signal }).then(
+      (d) => d.places,
+    ),
   reverse: (lat: number, lon: number, lang: Lang, signal?: AbortSignal) =>
-    request(z.object({ place: PlaceSchema }), `/api/reverse?lat=${lat}&lon=${lon}&lang=${lang}`, { signal }).then((d) => d.place),
+    request(z.object({ place: PlaceSchema }), `/api/reverse?lat=${lat}&lon=${lon}&lang=${lang}`, { signal }).then(
+      (d) => d.place,
+    ),
 };

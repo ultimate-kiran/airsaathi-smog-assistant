@@ -37,7 +37,15 @@ describe("engine structure", () => {
 
   it("accepts new rules without changing the engine (open for extension)", () => {
     const extra: Rule = () => ({
-      id: "test-rule", group: "community", counted: true, priority: 1000, title: "T", why: "W", impact: {}, assumption: "", forWhom: [],
+      id: "test-rule",
+      group: "community",
+      counted: true,
+      priority: 1000,
+      title: "T",
+      why: "W",
+      impact: {},
+      assumption: "",
+      forWhom: [],
     });
     const ids = planActions(buildContext(PROFILE, snap()), [...RULES, extra]).map((a) => a.id);
     expect(ids[0]).toBe("test-rule");
@@ -51,7 +59,18 @@ describe("engine structure", () => {
   });
 
   it("markCounted never mutates its input", () => {
-    const a: ActionOut = { id: "a", group: "move", exclusive: "x", counted: true, priority: 1, title: "", why: "", impact: {}, assumption: "", forWhom: [] };
+    const a: ActionOut = {
+      id: "a",
+      group: "move",
+      exclusive: "x",
+      counted: true,
+      priority: 1,
+      title: "",
+      why: "",
+      impact: {},
+      assumption: "",
+      forWhom: [],
+    };
     const input = [a, { ...a, id: "b" }];
     const out = markCounted(input);
     expect(out[1].counted).toBe(false);
@@ -83,7 +102,10 @@ describe("planService", () => {
 
 describe("/api/explain", () => {
   it("answers 503 with a code when AI is off, so the client keeps the rule text", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(openMeteoPayload())));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(openMeteoPayload())),
+    );
     const { fetchedAt } = await getPlan(PROFILE);
     const res = await explain(post("/api/explain", { profile: PROFILE, fetchedAt }));
     expect(res.status).toBe(503);
@@ -93,7 +115,12 @@ describe("/api/explain", () => {
   it("returns grounded AI text when a model is configured", async () => {
     process.env.OPENAI_API_KEY = "sk-test";
     const plan = buildPlan(PROFILE, snap(90));
-    const reply = { headline: `AQI ${plan.aqi.value} today`, summary: "Keep windows shut.", familyTips: [], actionNotes: [] };
+    const reply = {
+      headline: `AQI ${plan.aqi.value} today`,
+      summary: "Keep windows shut.",
+      familyTips: [],
+      actionNotes: [],
+    };
     vi.stubGlobal(
       "fetch",
       vi.fn(async (u: string) =>
@@ -112,7 +139,10 @@ describe("/api/explain", () => {
 describe("/api/explain consistency", () => {
   it("refuses with 409 'stale' when the page's plan came from an older air reading", async () => {
     process.env.OPENAI_API_KEY = "sk-test";
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(openMeteoPayload())));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(openMeteoPayload())),
+    );
     const res = await explain(post("/api/explain", { profile: PROFILE, fetchedAt: "2000-01-01T00:00:00.000Z" }));
     expect(res.status).toBe(409);
     expect(await res.json()).toMatchObject({ code: "stale" });
@@ -155,14 +185,22 @@ describe("createPlanService with injected collaborators", () => {
     const svc = createPlanService(deps);
     const plan = await svc.getPlan(PROFILE);
     await svc.explainPlan(plan, PROFILE);
-    await svc.explainPlan(plan, { ...PROFILE, exercise: { ...PROFILE.exercise, minutes: PROFILE.exercise.minutes + 1 } });
+    await svc.explainPlan(plan, {
+      ...PROFILE,
+      exercise: { ...PROFILE.exercise, minutes: PROFILE.exercise.minutes + 1 },
+    });
     expect(deps.explain).toHaveBeenCalledTimes(2);
     await svc.answerQuestion("PM?", PROFILE);
     expect(await svc.answerQuestion("pm?", PROFILE)).toMatchObject({ answer: "pm?" });
   });
 
   it("turns any air failure into a coded error", async () => {
-    const svc = createPlanService({ ...fakes(), fetchAir: async () => { throw new Error("down"); } });
+    const svc = createPlanService({
+      ...fakes(),
+      fetchAir: async () => {
+        throw new Error("down");
+      },
+    });
     vi.spyOn(console, "warn").mockImplementation(() => {});
     await expect(svc.getPlan(PROFILE)).rejects.toMatchObject({ code: "air_unavailable" });
   });
@@ -170,24 +208,44 @@ describe("createPlanService with injected collaborators", () => {
 
 describe("client api", () => {
   it("throws a coded ClientError for API errors and network failures", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ code: "rate_limited", error: "x" }, 429)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ code: "rate_limited", error: "x" }, 429)),
+    );
     await expect(api.plan(PROFILE)).rejects.toMatchObject({ code: "rate_limited" });
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ code: "made_up" }, 500)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ code: "made_up" }, 500)),
+    );
     await expect(api.plan(PROFILE)).rejects.toMatchObject({ code: "network" });
-    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("offline");
+      }),
+    );
     await expect(api.plan(PROFILE)).rejects.toBeInstanceOf(ClientError);
   });
 
   it("checks every reply against the shared schema", async () => {
     const good = { ...buildPlan(PROFILE, snap()), aiEnabled: false };
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(good)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(good)),
+    );
     await expect(api.plan(PROFILE)).resolves.toMatchObject({ place: "Kochi" });
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ ...good, hours: "not a list" })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ ...good, hours: "not a list" })),
+    );
     await expect(api.plan(PROFILE)).rejects.toMatchObject({ code: "internal" });
   });
 
   it("the server's real reply passes the client's check", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(openMeteoPayload())));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(openMeteoPayload())),
+    );
     const { POST } = await import("../src/app/api/plan/route");
     const body = await (await POST(post("/api/plan", PROFILE))).json();
     expect(PlanViewSchema.safeParse(body).success).toBe(true);

@@ -9,8 +9,6 @@ import Icon from "./Icon";
 import PlaceSearch from "./PlaceSearch";
 import Skyline, { SkylineHaze } from "./Skyline";
 
-export type { Place };
-
 interface Props {
   lang: Lang;
   plan: PlanView | null;

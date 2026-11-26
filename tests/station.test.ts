@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { snapshotFromOpenMeteo } from "../src/lib/airdata";
-import { applyStation, parseWaqi, usIndexToUg } from "../src/lib/station";
+import { parseWaqi, usIndexToUg } from "../src/lib/station";
+import { applyStation } from "../src/lib/stationReading";
 
 const NOW = new Date("2026-11-20T12:00:00Z");
 
@@ -17,7 +18,10 @@ function waqi(over: Record<string, unknown> = {}) {
 }
 
 function model() {
-  const time = Array.from({ length: 48 }, (_, i) => `2026-11-${20 + Math.floor(i / 24)}T${String(i % 24).padStart(2, "0")}:00`);
+  const time = Array.from(
+    { length: 48 },
+    (_, i) => `2026-11-${20 + Math.floor(i / 24)}T${String(i % 24).padStart(2, "0")}:00`,
+  );
   return snapshotFromOpenMeteo({
     current: { time: "2026-11-20T17:30", pm2_5: 45, pm10: 50 },
     hourly: { time, pm2_5: time.map(() => 45), pm10: time.map(() => 50) },
@@ -26,8 +30,18 @@ function model() {
 
 describe("usIndexToUg", () => {
   it("inverts EPA breakpoints", () => {
-    expect(usIndexToUg(50, [[0, 50, 0, 9], [51, 100, 9.1, 35.4]])).toBeCloseTo(9, 5);
-    expect(usIndexToUg(100, [[0, 50, 0, 9], [51, 100, 9.1, 35.4]])).toBeCloseTo(35.4, 5);
+    expect(
+      usIndexToUg(50, [
+        [0, 50, 0, 9],
+        [51, 100, 9.1, 35.4],
+      ]),
+    ).toBeCloseTo(9, 5);
+    expect(
+      usIndexToUg(100, [
+        [0, 50, 0, 9],
+        [51, 100, 9.1, 35.4],
+      ]),
+    ).toBeCloseTo(35.4, 5);
   });
 });
 

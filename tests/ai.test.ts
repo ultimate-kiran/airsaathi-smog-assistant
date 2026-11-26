@@ -7,8 +7,7 @@ import { PROFILE, jsonResponse, openMeteoPayload } from "./helpers";
 const plan = () => buildPlan(PROFILE, snapshotFromOpenMeteo(openMeteoPayload()));
 const asText = (x: unknown) => (typeof x === "string" ? x : JSON.stringify(x));
 
-const geminiReply = (x: unknown) =>
-  jsonResponse({ candidates: [{ content: { parts: [{ text: asText(x) }] } }] });
+const geminiReply = (x: unknown) => jsonResponse({ candidates: [{ content: { parts: [{ text: asText(x) }] } }] });
 const openaiReply = (x: unknown) => jsonResponse({ choices: [{ message: { content: asText(x) } }] });
 
 type Call = [string, RequestInit];
@@ -126,13 +125,25 @@ describe.each([
 
   it("falls back on bad JSON, schema mismatch and HTTP errors", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.stubGlobal("fetch", vi.fn(async () => reply("not json")));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => reply("not json")),
+    );
     expect(await explainWithAi(plan(), PROFILE)).toBeNull();
-    vi.stubGlobal("fetch", vi.fn(async () => reply({ headline: "" })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => reply({ headline: "" })),
+    );
     expect(await explainWithAi(plan(), PROFILE)).toBeNull();
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({}, 500)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({}, 500)),
+    );
     expect(await explainWithAi(plan(), PROFILE)).toBeNull();
-    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("offline"))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Promise.reject(new Error("offline"))),
+    );
     expect(await explainWithAi(plan(), PROFILE)).toBeNull();
   });
 });
@@ -168,7 +179,10 @@ describe("OpenAI request format", () => {
   });
 
   it("treats a refusal as no answer", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ choices: [{ message: { content: null, refusal: "no" } }] })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ choices: [{ message: { content: null, refusal: "no" } }] })),
+    );
     expect(await explainWithAi(plan(), PROFILE)).toBeNull();
   });
 });
@@ -201,7 +215,10 @@ describe("answerWithAi", () => {
 
   it("drops answers containing invented numbers", async () => {
     process.env.OPENAI_API_KEY = "secret-key";
-    vi.stubGlobal("fetch", vi.fn(async () => openaiReply("Your exposure will fall by 7777 percent.")));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => openaiReply("Your exposure will fall by 7777 percent.")),
+    );
     expect(await answerWithAi("Is it safe?", plan(), PROFILE)).toBeNull();
   });
 });

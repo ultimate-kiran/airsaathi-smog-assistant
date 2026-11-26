@@ -12,9 +12,12 @@ export default function ShareBar({ plan, lang }: { plan: PlanResponse; lang: Lan
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const text = shareText(plan, lang);
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   async function copy() {
     try {

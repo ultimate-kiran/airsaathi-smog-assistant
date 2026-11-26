@@ -28,9 +28,12 @@ export interface PlanServiceDeps {
 export type PlanService = ReturnType<typeof createPlanService>;
 
 export function createPlanService({
-  fetchAir, explain, answer,
+  fetchAir,
+  explain,
+  answer,
   modelContext = (plan, profile) => [plan, profile],
-  ttlMs = 10 * 60_000, maxItems = 1000,
+  ttlMs = 10 * 60_000,
+  maxItems = 1000,
 }: PlanServiceDeps) {
   const airCache = new TtlCache<AirSnapshot>(maxItems);
   const explainCache = new TtlCache<AiExplanation | null>(maxItems);
