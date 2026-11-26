@@ -4,7 +4,7 @@ import { errorName, log } from "./log";
 /**
  * Rate limiting behind one interface, so the storage can change without touching the routes.
  *  - With UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN set, counters live in Redis and are
- *    shared by every serverless instance (fixed one-minute windows).
+ *    shared by every serverless instance (sliding-window counters).
  *  - Without them, each instance counts in memory: fine for one server, a soft limit on serverless.
  * If Redis is unreachable we fall back to memory rather than blocking everyone.
  */
@@ -71,7 +71,7 @@ export class UpstashLimiter implements RateLimiter {
 }
 
 const memory = new MemoryLimiter();
-let shared: { url: string; limiter: RateLimiter } | null = null;
+let shared: { url: string; token: string; limiter: RateLimiter } | null = null;
 
 /** The cross-instance limiter, or null when only per-instance memory is available. */
 export function sharedLimiter(): RateLimiter | null {
@@ -82,7 +82,9 @@ export function sharedLimiter(): RateLimiter | null {
 export function limiter(): RateLimiter {
   const { UPSTASH_REDIS_REST_URL: url, UPSTASH_REDIS_REST_TOKEN: token } = env();
   if (!url || !token) return memory;
-  if (shared?.url !== url) shared = { url, limiter: new UpstashLimiter(url.replace(/\/$/, ""), token, memory) };
+  if (shared?.url !== url || shared.token !== token) {
+    shared = { url, token, limiter: new UpstashLimiter(url.replace(/\/$/, ""), token, memory) };
+  }
   return shared.limiter;
 }
 

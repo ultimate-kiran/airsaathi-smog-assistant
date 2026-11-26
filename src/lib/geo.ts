@@ -8,7 +8,7 @@
  */
 
 import { api } from "./client/api";
-import type { Lang } from "./types";
+import type { Lang, Place } from "./types";
 
 export interface Fix {
   lat: number;
@@ -54,6 +54,7 @@ export function locate(geo: GeoLike | undefined, opts: LocateOptions = {}): Prom
       hardTimer?: ReturnType<typeof setTimeout>;
     } = { best: null, settled: false };
 
+    const settleAt = Date.now() + settleMs;
     const stop = () => {
       clearTimeout(s.settleTimer);
       clearTimeout(s.hardTimer);
@@ -76,7 +77,7 @@ export function locate(geo: GeoLike | undefined, opts: LocateOptions = {}): Prom
       (p) => {
         const fix: Fix = { lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy };
         if (!s.best || fix.accuracy < s.best.accuracy) s.best = fix;
-        if (fix.accuracy <= goodEnough) succeed();
+        if (fix.accuracy <= goodEnough || Date.now() >= settleAt) succeed();
       },
       (e) => {
         // Once there is a fix, an error is usually a blip (the position source changed, Wi-Fi
@@ -94,24 +95,19 @@ export function locate(geo: GeoLike | undefined, opts: LocateOptions = {}): Prom
     }
 
     s.settleTimer = setTimeout(succeed, settleMs);
-    s.hardTimer = setTimeout(() => fail("timeout"), timeoutMs + 1000);
+    s.hardTimer = setTimeout(() => s.best ? succeed() : fail("timeout"), timeoutMs + 1000);
   });
 }
 
 /** About 1 km, which is as precise as the air data can use and as precise as the server keeps. */
-export const round2 = (n: number) => Math.round(n * 100) / 100;
+export { toGrid as round2 } from "./distance";
 
 /** "35 m" under a kilometre, "2.4 km" above. */
 export function formatAccuracy(m: number): string {
   return m < 1000 ? `${Math.max(1, Math.round(m))} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
-export interface Named {
-  /** full label, e.g. "Raisina Hill, New Delhi, Delhi" */
-  name: string;
-  /** what the app shows as the place, e.g. "Raisina Hill, New Delhi" */
-  short: string;
-}
+export type Named = Pick<Place, "name" | "short">;
 
 /** The place name for a position, or null when the lookup fails (the caller then keeps a generic label). */
 export async function nameFor(lat: number, lon: number, lang: Lang = "en"): Promise<Named | null> {

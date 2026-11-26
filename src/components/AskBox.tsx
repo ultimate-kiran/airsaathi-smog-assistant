@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { ClientError, api, isAbort } from "@/lib/client/api";
+import { useId, useState } from "react";
+import { useLatestRequest } from "./hooks/useLatestRequest";
+import { api, clientErrorCode, isAbort } from "@/lib/client/api";
 import { UI } from "@/lib/i18n";
-import type { ErrorCode, Profile } from "@/lib/types";
+import { QUESTION_LENGTH, type ErrorCode, type Profile } from "@/lib/types";
 import Icon from "./Icon";
 
 /** Mount with key={lang}: a language switch starts a fresh box, so no answer shows in the old language. */
@@ -14,26 +15,23 @@ export default function AskBox({ profile }: { profile: Profile }) {
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState<ErrorCode | null>(null);
   const [busy, setBusy] = useState(false);
-  const ctl = useRef<AbortController | null>(null);
-
-  useEffect(() => () => ctl.current?.abort(), []);
+  const startRequest = useLatestRequest();
 
   async function ask(question: string) {
     const text = question.trim();
-    if (text.length < 2 || busy) return;
-    ctl.current?.abort();
-    const c = new AbortController();
-    ctl.current = c;
+    if (text.length < QUESTION_LENGTH.min || busy) return;
+    const signal = startRequest();
     setBusy(true);
     setError(null);
     setAnswer("");
     try {
-      setAnswer((await api.ask(text, profile, c.signal)).answer);
+      const reply = await api.ask(text, profile, signal);
+      if (!signal.aborted) setAnswer(reply.answer);
     } catch (e) {
-      if (isAbort(e)) return;
-      setError(e instanceof ClientError ? e.code : "network");
+      if (signal.aborted || isAbort(e)) return;
+      setError(clientErrorCode(e));
     } finally {
-      if (ctl.current === c) setBusy(false);
+      if (!signal.aborted) setBusy(false);
     }
   }
 
@@ -51,8 +49,8 @@ export default function AskBox({ profile }: { profile: Profile }) {
         <label htmlFor={id} className="sr-only">
           {t.askTitle}
         </label>
-        <input id={id} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.askPlaceholder} maxLength={300} />
-        <button className="btn btn--primary" type="submit" disabled={busy || q.trim().length < 2}>
+        <input id={id} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.askPlaceholder} maxLength={QUESTION_LENGTH.max} />
+        <button className="btn btn--primary" type="submit" disabled={busy || q.trim().length < QUESTION_LENGTH.min}>
           {busy ? t.asking : t.askButton}
           {!busy && <Icon name="send" size={18} />}
         </button>

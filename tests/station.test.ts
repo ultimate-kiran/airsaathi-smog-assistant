@@ -42,6 +42,9 @@ describe("parseWaqi", () => {
   it("rejects a station that is too far away", () => {
     expect(parseWaqi(waqi({ city: { name: "Delhi", geo: [28.6, 77.2] } }), 9.94, 76.26, NOW)).toBeNull();
   });
+  it("rejects a future station timestamp", () => {
+    expect(parseWaqi(waqi({ time: { iso: "2026-11-21T00:00:00Z" } }), 9.94, 76.26, NOW)).toBeNull();
+  });
   it("rejects stale readings", () => {
     expect(parseWaqi(waqi({ time: { iso: "2026-11-19T00:00:00+05:30" } }), 9.94, 76.26, NOW)).toBeNull();
   });

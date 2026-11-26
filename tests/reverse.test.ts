@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as reverse } from "../src/app/api/reverse/route";
 import { nameFor } from "../src/lib/geo";
+import { createPlaceService } from "../src/lib/places";
 import { placeName } from "../src/lib/placename";
 import { places, resetAll } from "../src/lib/container";
 import { jsonResponse } from "./helpers";
@@ -40,6 +41,19 @@ describe("placeName", () => {
     expect(placeName({})).toBeNull();
     expect(placeName({ suburb: "a".repeat(200), city: "b".repeat(200) })!.short.length).toBeLessThanOrEqual(60);
   });
+});
+
+it("shares one lookup and throttle slot for concurrent requests in a grid cell", async () => {
+  const lookup = vi.fn(async (lat: number, lon: number) => ({ name: "Delhi", short: "Delhi", lat, lon }));
+  const gate = { intervalMs: 0, wait: vi.fn(async () => {}) };
+  const service = createPlaceService({ shared: () => null, lookup, gate });
+  const [first, second] = await Promise.all([
+    service.reverse(28.611, 77.041, "hi"),
+    service.reverse(28.612, 77.042, "hi"),
+  ]);
+  expect(first).toEqual(second);
+  expect(lookup).toHaveBeenCalledExactlyOnceWith(28.61, 77.04, "hi");
+  expect(gate.wait).toHaveBeenCalledTimes(1);
 });
 
 describe("GET /api/reverse", () => {

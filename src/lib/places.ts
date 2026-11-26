@@ -69,17 +69,40 @@ export class Throttle {
 
 const ResultSchema = z.object({ address: AddressSchema.optional() });
 
+async function lookupAddress(lat: number, lon: number, lang: Lang): Promise<Place | null> {
+  let data: z.infer<typeof ResultSchema>;
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=${lang === "hi" ? "hi,en" : "en"}&lat=${lat}&lon=${lon}`,
+      { headers: { "User-Agent": "AirSaathi-smog-assistant" }, signal: AbortSignal.timeout(6000), next: { revalidate: 86_400 } },
+    );
+    if (!res.ok) throw new Error("upstream");
+    data = ResultSchema.parse(await res.json());
+  } catch {
+    throw new AppError("lookup_unavailable");
+  }
+  if (data.address?.country_code && data.address.country_code !== "in") throw new AppError("outside_india");
+  const named = data.address ? placeName(data.address) : null;
+  return named ? { ...named, lat, lon } : null;
+}
+
 export interface PlaceServiceDeps {
   /** cross-instance limiter, or null when only this instance counts */
   shared: () => RateLimiter | null;
-  gate?: Throttle;
+  lookup?: (lat: number, lon: number, lang: Lang) => Promise<Place | null>;
+  gate?: Pick<Throttle, "wait" | "intervalMs">;
   ttlMs?: number;
 }
 
 export type PlaceService = ReturnType<typeof createPlaceService>;
 
 /** Reverse lookups with their cache and throttle; container.ts wires the real one. */
-export function createPlaceService({ shared, gate = new Throttle(1100), ttlMs = 24 * 3_600_000 }: PlaceServiceDeps) {
+export function createPlaceService({
+  shared,
+  gate = new Throttle(1100),
+  lookup = lookupAddress,
+  ttlMs = 24 * 3_600_000,
+}: PlaceServiceDeps) {
   const cache = new TtlCache<Place | null>(2000);
 
   /** Across instances (only when a shared store exists; within one, the Throttle already spaces calls). */
@@ -97,20 +120,7 @@ export function createPlaceService({ shared, gate = new Throttle(1100), ttlMs = 
     return cache.getOrLoad(`${rlat},${rlon},${lang}`, ttlMs, async () => {
       await gate.wait();
       if (!(await globalSlot())) throw new AppError("lookup_unavailable");
-      let data: z.infer<typeof ResultSchema>;
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=${lang === "hi" ? "hi,en" : "en"}&lat=${rlat}&lon=${rlon}`,
-          { headers: { "User-Agent": "AirSaathi-smog-assistant" }, signal: AbortSignal.timeout(6000), next: { revalidate: 86_400 } },
-        );
-        if (!res.ok) throw new Error("upstream");
-        data = ResultSchema.parse(await res.json());
-      } catch {
-        throw new AppError("lookup_unavailable");
-      }
-      if (data.address?.country_code && data.address.country_code !== "in") throw new AppError("outside_india");
-      const named = data.address ? placeName(data.address) : null;
-      return named ? { ...named, lat: rlat, lon: rlon } : null;
+      return lookup(rlat, rlon, lang);
     });
   }
 

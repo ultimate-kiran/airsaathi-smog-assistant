@@ -56,6 +56,15 @@ describe("locate", () => {
     await expect(p).resolves.toMatchObject({ lat: 28.6139, lon: 77.209, accuracy: 40 });
   });
 
+  it("returns a usable first fix received after the settle timer", async () => {
+    const g = fakeGeo();
+    const p = locate(g.geo, { settleMs: 100, timeoutMs: 500 });
+    await vi.advanceTimersByTimeAsync(200);
+    g.fix(700);
+    const result = expect(p).resolves.toMatchObject({ accuracy: 700 });
+    await Promise.all([result, vi.advanceTimersByTimeAsync(1500)]);
+  });
+
   it("settles for the best fix seen once the wait is over", async () => {
     const g = fakeGeo();
     const p = locate(g.geo, { settleMs: 5000 });

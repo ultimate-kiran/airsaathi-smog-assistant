@@ -70,6 +70,11 @@ describe("air snapshot", () => {
     expect(s.hours[0].hour).toBe(9);
     expect(s.hours[0].isNow).toBe(true);
   });
+  it("rejects forecast columns of different lengths", () => {
+    const raw = fixture();
+    raw.hourly.pm10 = raw.hourly.pm10.slice(0, 10);
+    expect(() => snapshotFromOpenMeteo(raw)).toThrow();
+  });
   it("fills null gaps instead of failing", () => {
     const raw = fixture();
     (raw.hourly.pm2_5 as (number | null)[])[10] = null;
@@ -89,6 +94,11 @@ describe("best window", () => {
     expect(w?.start).toBe(14);
     expect(formatRange(w!, "en")).toBe("2 pm–3 pm");
     expect(formatRange(w!, "hi")).toBe("दोपहर 2–3 बजे");
+  });
+  it("rejects windows crossing midnight even when those hours have the cleanest air", () => {
+    const { hours } = snapshotFromOpenMeteo(fixture());
+    const midnight = hours.map((h) => ({ ...h, pm25: h.hour === 23 || h.hour === 0 ? 0 : 100 }));
+    expect(bestWindow(midnight, 2)?.start).toBe(9);
   });
   it("never recommends night hours", () => {
     const s = snapshotFromOpenMeteo(fixture());

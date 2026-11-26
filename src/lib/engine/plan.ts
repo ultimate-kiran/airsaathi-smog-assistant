@@ -25,9 +25,13 @@ export function markCounted(ranked: ActionOut[]): ActionOut[] {
 }
 
 export function totalsFor(actions: ActionOut[]): PlanResponse["totals"] {
+  return sumCounted(markCounted(actions));
+}
+
+function sumCounted(actions: ActionOut[]): PlanResponse["totals"] {
   let inhaled = 0;
   let co2 = 0;
-  for (const a of markCounted(actions)) {
+  for (const a of actions) {
     if (!a.counted) continue;
     inhaled += a.impact.inhaledPm25Ug ?? 0;
     co2 += a.impact.co2eKg ?? 0;
@@ -74,7 +78,7 @@ export function buildPlan(p: Profile, air: AirSnapshot): PlanResponse {
     bestWindow: best,
     avoid: worstStretch(air.hours, c.limits.vulnerable),
     actions,
-    totals: totalsFor(actions),
+    totals: sumCounted(actions),
     ai: ruleSummary(p.place, p.lang, cur.aqi, best, actions[0]),
   };
 }

@@ -42,10 +42,12 @@ export class TtlCache<V> {
     if (inFlight) return inFlight;
     const p = load()
       .then((value) => {
-        if (keep(value)) this.set(key, value, ttlMs);
+        if (this.pending.get(key) === p && keep(value)) this.set(key, value, ttlMs);
         return value;
       })
-      .finally(() => this.pending.delete(key));
+      .finally(() => {
+        if (this.pending.get(key) === p) this.pending.delete(key);
+      });
     this.pending.set(key, p);
     return p;
   }

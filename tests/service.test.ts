@@ -149,6 +149,18 @@ describe("createPlanService with injected collaborators", () => {
     expect(deps.answer).toHaveBeenCalledTimes(2);
   });
 
+  it("keys injected models by their inputs, including question case", async () => {
+    const answer = vi.fn(async (question: string) => question);
+    const deps = { ...fakes(), answer };
+    const svc = createPlanService(deps);
+    const plan = await svc.getPlan(PROFILE);
+    await svc.explainPlan(plan, PROFILE);
+    await svc.explainPlan(plan, { ...PROFILE, exercise: { ...PROFILE.exercise, minutes: PROFILE.exercise.minutes + 1 } });
+    expect(deps.explain).toHaveBeenCalledTimes(2);
+    await svc.answerQuestion("PM?", PROFILE);
+    expect(await svc.answerQuestion("pm?", PROFILE)).toMatchObject({ answer: "pm?" });
+  });
+
   it("turns any air failure into a coded error", async () => {
     const svc = createPlanService({ ...fakes(), fetchAir: async () => { throw new Error("down"); } });
     vi.spyOn(console, "warn").mockImplementation(() => {});

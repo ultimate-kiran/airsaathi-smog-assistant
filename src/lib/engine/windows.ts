@@ -20,10 +20,11 @@ export function avgFor(hours: HourPoint[], hs: readonly number[], fallback: numb
 
 /** Cleanest run of `len` consecutive daytime hours (06:00 to 20:00). */
 export function bestWindow(hours: HourPoint[], len: number): Window | null {
+  if (!Number.isInteger(len) || len < 1) return null;
   let best: Window | null = null;
   for (let i = 0; i + len <= hours.length; i++) {
     const slice = hours.slice(i, i + len);
-    const consecutive = slice.every((h, j) => h.hour === (slice[0].hour + j) % 24);
+    const consecutive = slice.every((h, j) => h.hour === slice[0].hour + j);
     const daytime = slice[0].hour >= HOURS.DAY_FIRST && slice[len - 1].hour <= HOURS.DAY_LAST;
     if (!consecutive || !daytime) continue;
     const avgPm25 = mean(slice.map((h) => h.pm25));

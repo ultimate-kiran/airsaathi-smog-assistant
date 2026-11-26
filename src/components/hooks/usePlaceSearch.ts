@@ -1,28 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, isAbort, type PlaceResult } from "@/lib/client/api";
+import { api, isAbort } from "@/lib/client/api";
+import { PLACE_QUERY_LENGTH, type Place } from "@/lib/types";
 
-export type Place = PlaceResult;
+export type { Place };
 
 const DEBOUNCE_MS = 300;
-const MIN_CHARS = 2;
 
 /** Debounced place search. Short queries show no list; stale requests are cancelled. */
 export function usePlaceSearch() {
   const [q, setQ] = useState("");
-  const [found, setFound] = useState<Place[] | null>(null);
+  const [found, setFound] = useState<{ term: string; places: Place[] } | null>(null);
 
   useEffect(() => {
     const term = q.trim();
-    if (term.length < MIN_CHARS) return;
+    if (term.length < PLACE_QUERY_LENGTH.min) return;
     const ctl = new AbortController();
     const timer = setTimeout(() => {
       api
         .search(term, ctl.signal)
-        .then(setFound)
+        .then((places) => {
+          if (!ctl.signal.aborted) setFound({ term, places });
+        })
         .catch((e) => {
-          if (!isAbort(e)) setFound([]);
+          if (!ctl.signal.aborted && !isAbort(e)) setFound({ term, places: [] });
         });
     }, DEBOUNCE_MS);
     return () => {
@@ -32,7 +34,7 @@ export function usePlaceSearch() {
   }, [q]);
 
   // derived, so the effect never has to reset state for short queries
-  const results = q.trim().length < MIN_CHARS ? null : found;
+  const results = found?.term === q.trim() ? found.places : null;
   const clear = () => {
     setQ("");
     setFound(null);

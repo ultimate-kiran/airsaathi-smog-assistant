@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { UI } from "@/lib/i18n";
 import { loadProfile, saveProfile } from "@/lib/storage";
-import type { Lang, Profile } from "@/lib/types";
+import type { Lang, Place, Profile } from "@/lib/types";
 import Actions from "./Actions";
 import AskBox from "./AskBox";
 import Header from "./Header";
-import Hero, { type Place } from "./Hero";
+import Hero from "./Hero";
 import { useDoneLog } from "./hooks/useDoneLog";
 import { usePlan } from "./hooks/usePlan";
 import HourStrip from "./HourStrip";

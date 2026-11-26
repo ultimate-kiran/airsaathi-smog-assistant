@@ -6,7 +6,7 @@ import { AppError } from "../src/lib/errors";
 import { formatHour, formatHourShort, formatRange } from "../src/lib/format";
 import { ok, readJson, route } from "../src/lib/http";
 import { Throttle } from "../src/lib/places";
-import { MemoryLimiter, UpstashLimiter, clientIp } from "../src/lib/ratelimit";
+import { MemoryLimiter, UpstashLimiter, clientIp, limiter } from "../src/lib/ratelimit";
 import { jsonResponse } from "./helpers";
 
 afterEach(() => {
@@ -65,6 +65,24 @@ describe("TtlCache", () => {
     expect(nothing).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps a replacement load when an older load settles after clear", async () => {
+    const cache = new TtlCache<number>();
+    const old = Promise.withResolvers<number>();
+    const fresh = Promise.withResolvers<number>();
+    const first = cache.getOrLoad("key", 1000, () => old.promise);
+    cache.clear();
+    const second = cache.getOrLoad("key", 1000, () => fresh.promise);
+    old.resolve(1);
+    await expect(first).resolves.toBe(1);
+    expect(cache.get("key")).toBeUndefined();
+    const duplicate = vi.fn(async () => 3);
+    const third = cache.getOrLoad("key", 1000, duplicate);
+    fresh.resolve(2);
+    await expect(Promise.all([second, third])).resolves.toEqual([2, 2]);
+    expect(duplicate).not.toHaveBeenCalled();
+    expect(cache.get("key")).toBe(2);
+  });
+
   it("hashes keys stably", () => {
     expect(hashKey({ a: 1 }, "x")).toBe(hashKey({ a: 1 }, "x"));
     expect(hashKey({ a: 1 })).not.toBe(hashKey({ a: 2 }));
@@ -72,6 +90,23 @@ describe("TtlCache", () => {
 });
 
 describe("rate limiting", () => {
+  it("uses a rotated token for the same Redis URL", async () => {
+    const transport = vi.fn(async (_url: string, _init: RequestInit) =>
+      jsonResponse([{ result: 1 }, { result: 1 }, { result: null }]));
+    vi.stubGlobal("fetch", transport);
+    try {
+      vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://redis.example");
+      vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "example-token-one");
+      await limiter().hit("key", 2, 1000);
+      vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "example-token-two");
+      await limiter().hit("key", 2, 1000);
+      expect(transport.mock.calls.map(([, init]) => new Headers(init.headers).get("authorization")))
+        .toEqual(["Bearer example-token-one", "Bearer example-token-two"]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("counts per key in memory", async () => {
     const m = new MemoryLimiter();
     expect(await m.hit("k", 2, 60_000)).toBe(true);
@@ -135,6 +170,13 @@ describe("http helpers", () => {
     await expect(readJson(post("x".repeat(200)), Schema, 100)).rejects.toMatchObject({ code: "too_large" });
     await expect(readJson(post("{nope"), Schema, 100)).rejects.toMatchObject({ code: "bad_json" });
     await expect(readJson(post('{"n":"x"}'), Schema, 100)).rejects.toMatchObject({ code: "invalid" });
+  });
+
+  it("enforces the request limit in UTF-8 bytes", async () => {
+    const body = JSON.stringify("\u0928");
+    const bytes = new TextEncoder().encode(body).byteLength;
+    await expect(readJson(post(body), z.string(), bytes)).resolves.toBe("\u0928");
+    await expect(readJson(post(body), z.string(), bytes - 1)).rejects.toMatchObject({ code: "too_large" });
   });
 
   it("turns AppError into a coded reply and anything else into a logged 500 without internals", async () => {

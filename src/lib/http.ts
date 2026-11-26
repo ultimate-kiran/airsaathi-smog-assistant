@@ -13,39 +13,24 @@ import type { ErrorCode } from "./types";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
-const MESSAGES: Record<ErrorCode, string> = {
-  rate_limited: "Too many requests. Wait a minute and try again.",
-  too_large: "Request is too large.",
-  bad_json: "Request must be valid JSON.",
-  invalid: "Some details are not valid. Check them and try again.",
-  air_unavailable: "Air quality data is not available for this place right now. Try again in a minute.",
-  lookup_unavailable: "This lookup is unavailable right now.",
-  not_found: "Nothing was found.",
-  outside_india: "Only places in India are supported.",
-  ai_unavailable: "AI explanations are unavailable right now.",
-  stale: "The air data changed since this plan was made. Reload the plan.",
-  internal: "Something went wrong on our side. Try again.",
-  network: "Could not reach the server.",
+const ERRORS: Record<ErrorCode, { status: number; message: string }> = {
+  rate_limited: { status: 429, message: "Too many requests. Wait a minute and try again." },
+  too_large: { status: 413, message: "Request is too large." },
+  bad_json: { status: 400, message: "Request must be valid JSON." },
+  invalid: { status: 422, message: "Some details are not valid. Check them and try again." },
+  air_unavailable: { status: 502, message: "Air quality data is not available for this place right now. Try again in a minute." },
+  lookup_unavailable: { status: 502, message: "This lookup is unavailable right now." },
+  not_found: { status: 404, message: "Nothing was found." },
+  outside_india: { status: 422, message: "Only places in India are supported." },
+  ai_unavailable: { status: 503, message: "AI explanations are unavailable right now." },
+  stale: { status: 409, message: "The air data changed since this plan was made. Reload the plan." },
+  internal: { status: 500, message: "Something went wrong on our side. Try again." },
+  network: { status: 503, message: "Could not reach the server." },
 };
-
-const STATUS: Record<ErrorCode, number> = {
-  rate_limited: 429,
-  too_large: 413,
-  bad_json: 400,
-  invalid: 422,
-  air_unavailable: 502,
-  lookup_unavailable: 502,
-  not_found: 404,
-  outside_india: 422,
-  ai_unavailable: 503,
-  stale: 409,
-  internal: 500,
-  network: 503,
-};
-
 
 export function fail(code: ErrorCode, extra: Record<string, unknown> = {}): NextResponse {
-  return NextResponse.json({ code, error: MESSAGES[code], ...extra }, { status: STATUS[code], headers: NO_STORE });
+  const { status, message } = ERRORS[code];
+  return NextResponse.json({ code, error: message, ...extra }, { status, headers: NO_STORE });
 }
 
 export function ok(body: unknown, headers: Record<string, string> = NO_STORE): NextResponse {
@@ -56,10 +41,31 @@ export async function rateLimitOrThrow(req: Request, scope: string, perMinute: n
   if (!(await limiter().hit(`${scope}:${clientIp(req)}`, perMinute, 60_000))) throw new AppError("rate_limited");
 }
 
+async function readBody(req: Request, maxBytes: number): Promise<string> {
+  const reader = req.body?.getReader();
+  if (!reader) return "";
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return text + decoder.decode();
+      bytes += value.byteLength;
+      if (bytes > maxBytes) {
+        void reader.cancel().catch(() => {});
+        throw new AppError("too_large");
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 /** Size-capped JSON body validated against a schema. Throws AppError on any problem. */
 export async function readJson<S extends z.ZodType>(req: Request, schema: S, maxBytes: number): Promise<z.infer<S>> {
-  const raw = await req.text();
-  if (raw.length > maxBytes) throw new AppError("too_large");
+  const raw = await readBody(req, maxBytes);
   let body: unknown;
   try {
     body = JSON.parse(raw);

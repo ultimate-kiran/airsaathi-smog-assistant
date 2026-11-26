@@ -23,6 +23,10 @@ export class ClientError extends Error {
   }
 }
 
+export function clientErrorCode(error: unknown): ErrorCode {
+  return error instanceof ClientError ? error.code : "network";
+}
+
 export const isAbort = (e: unknown) => e instanceof DOMException && e.name === "AbortError";
 
 const asCode = (x: unknown): ErrorCode =>

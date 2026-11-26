@@ -1,8 +1,8 @@
-import { z } from "zod";
+import { BRIEFING_SCHEMA, Explanation } from "./briefing";
 import { log } from "../log";
 import type { AiExplanation, PlanResponse, Profile } from "../types";
 import { numbersGrounded } from "./grounding";
-import { ANSWER_RULES, BRIEFING_PROMPT, BRIEFING_SCHEMA, SYSTEM, contextFor } from "./prompts";
+import { ANSWER_RULES, BRIEFING_PROMPT, SYSTEM, contextFor } from "./prompts";
 import { callModel, providerConfig } from "./providers";
 
 /**
@@ -16,13 +16,6 @@ export { withAi } from "../planText";
 
 /** Each call must finish well inside the route's time limit. */
 const AI_TIMEOUT_MS = 12_000;
-
-const Explanation = z.object({
-  headline: z.string().min(1).max(160),
-  summary: z.string().min(1).max(600),
-  familyTips: z.array(z.string().max(240)).max(3),
-  actionNotes: z.array(z.object({ id: z.string(), note: z.string().min(1).max(280) })).max(20),
-});
 
 export function aiEnabled(): boolean {
   return providerConfig() !== null;

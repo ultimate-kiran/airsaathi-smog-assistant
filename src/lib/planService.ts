@@ -1,4 +1,3 @@
-import { contextFor } from "./ai/prompts";
 import type { AirSnapshot } from "./airdata";
 import { ruleAnswer } from "./answers";
 import { TtlCache, hashKey } from "./cache";
@@ -6,7 +5,7 @@ import { toGrid } from "./distance";
 import { buildPlan } from "./engine";
 import { AppError } from "./errors";
 import { errorName, log } from "./log";
-import type { AiExplanation, PlanResponse, Profile } from "./types";
+import type { AiExplanation, AskReply, PlanResponse, Profile } from "./types";
 
 /**
  * The application service the API routes call (Facade). It owns caching so the routes stay thin:
@@ -20,13 +19,19 @@ export interface PlanServiceDeps {
   fetchAir: (lat: number, lon: number) => Promise<AirSnapshot>;
   explain: (plan: PlanResponse, profile: Profile) => Promise<AiExplanation | null>;
   answer: (question: string, plan: PlanResponse, profile: Profile) => Promise<string | null>;
+  /** Inputs that can change the injected model's reply. Defaults to the full plan and profile. */
+  modelContext?: (plan: PlanResponse, profile: Profile) => unknown;
   ttlMs?: number;
   maxItems?: number;
 }
 
 export type PlanService = ReturnType<typeof createPlanService>;
 
-export function createPlanService({ fetchAir, explain, answer, ttlMs = 10 * 60_000, maxItems = 1000 }: PlanServiceDeps) {
+export function createPlanService({
+  fetchAir, explain, answer,
+  modelContext = (plan, profile) => [plan, profile],
+  ttlMs = 10 * 60_000, maxItems = 1000,
+}: PlanServiceDeps) {
   const airCache = new TtlCache<AirSnapshot>(maxItems);
   const explainCache = new TtlCache<AiExplanation | null>(maxItems);
   const answerCache = new TtlCache<string | null>(maxItems);
@@ -48,13 +53,13 @@ export function createPlanService({ fetchAir, explain, answer, ttlMs = 10 * 60_0
   }
 
   function explainPlan(plan: PlanResponse, profile: Profile): Promise<AiExplanation | null> {
-    const key = hashKey("explain", contextFor(plan, profile), profile.lang);
+    const key = hashKey("explain", modelContext(plan, profile), profile.lang);
     return explainCache.getOrLoad(key, ttlMs, () => explain(plan, profile), found);
   }
 
-  async function answerQuestion(question: string, profile: Profile): Promise<{ answer: string; source: "ai" | "rules" }> {
+  async function answerQuestion(question: string, profile: Profile): Promise<AskReply> {
     const plan = await getPlan(profile);
-    const key = hashKey("answer", contextFor(plan, profile), profile.lang, question.toLowerCase());
+    const key = hashKey("answer", modelContext(plan, profile), profile.lang, question);
     const ai = await answerCache.getOrLoad(key, ttlMs, () => answer(question, plan, profile), found);
     return ai ? { answer: ai, source: "ai" } : { answer: ruleAnswer(question, plan, profile.lang), source: "rules" };
   }

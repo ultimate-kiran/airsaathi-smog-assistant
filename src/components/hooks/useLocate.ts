@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { APPROXIMATE_OVER_M, GeoError, formatAccuracy, locate, nameFor, round2 } from "@/lib/geo";
 import { UI } from "@/lib/i18n";
-import type { Lang } from "@/lib/types";
-import type { Place } from "./usePlaceSearch";
+import type { Lang, Place } from "@/lib/types";
 
 /** "Use my location": best device fix, then a place name, with a message that says how it went. */
 export function useLocate(lang: Lang, onFound: (p: Place) => void) {

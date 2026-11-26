@@ -43,15 +43,36 @@ export function toGeminiSchema(node: unknown): unknown {
   return node;
 }
 
+async function postModelRequest(
+  provider: Provider,
+  url: string,
+  auth: Record<string, string>,
+  payload: object,
+  timeoutMs: number,
+) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...auth },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) {
+    log("error", "ai.http", { provider, status: response.status });
+    return null;
+  }
+  return response.json();
+}
+
 const PROVIDERS: Record<Provider, ModelClient> = {
   gemini: {
     defaultModel: "gemini-flash-latest",
     keyOf: (e) => ({ key: e.GEMINI_API_KEY, model: e.GEMINI_MODEL }),
     async call(r, cfg) {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": cfg.key },
-        body: JSON.stringify({
+      const data = await postModelRequest(
+        cfg.provider,
+        `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent`,
+        { "x-goog-api-key": cfg.key },
+        {
           systemInstruction: { parts: [{ text: r.system }] },
           contents: [{ role: "user", parts: [{ text: r.user }] }],
           generationConfig: {
@@ -59,14 +80,9 @@ const PROVIDERS: Record<Provider, ModelClient> = {
             maxOutputTokens: r.maxTokens,
             ...(r.schema ? { responseMimeType: "application/json", responseSchema: toGeminiSchema(r.schema) } : {}),
           },
-        }),
-        signal: AbortSignal.timeout(r.timeoutMs),
-      });
-      if (!res.ok) {
-        log("error", "ai.http", { provider: "gemini", status: res.status });
-        return null;
-      }
-      const data = await res.json();
+        },
+        r.timeoutMs,
+      );
       return data?.candidates?.[0]?.content?.parts?.map((x: { text?: string }) => x.text ?? "").join("") ?? null;
     },
   },
@@ -74,10 +90,11 @@ const PROVIDERS: Record<Provider, ModelClient> = {
     defaultModel: "gpt-4.1-mini",
     keyOf: (e) => ({ key: e.OPENAI_API_KEY, model: e.OPENAI_MODEL }),
     async call(r, cfg) {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
-        body: JSON.stringify({
+      const data = await postModelRequest(
+        cfg.provider,
+        "https://api.openai.com/v1/chat/completions",
+        { Authorization: `Bearer ${cfg.key}` },
+        {
           model: cfg.model,
           messages: [
             { role: "system", content: r.system },
@@ -89,14 +106,9 @@ const PROVIDERS: Record<Provider, ModelClient> = {
           ...(r.schema
             ? { response_format: { type: "json_schema", json_schema: { name: "briefing", strict: true, schema: r.schema } } }
             : {}),
-        }),
-        signal: AbortSignal.timeout(r.timeoutMs),
-      });
-      if (!res.ok) {
-        log("error", "ai.http", { provider: "openai", status: res.status });
-        return null;
-      }
-      const data = await res.json();
+        },
+        r.timeoutMs,
+      );
       const msg = data?.choices?.[0]?.message;
       if (!msg || msg.refusal) return null;
       return typeof msg.content === "string" ? msg.content : null;

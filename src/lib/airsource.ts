@@ -1,6 +1,7 @@
 import { fetchAir, type AirSnapshot } from "./airdata";
 import { fetchOpenAq } from "./openaq";
-import { applyStation, fetchStation } from "./station";
+import { fetchStation } from "./station";
+import { applyStation } from "./stationReading";
 import type { StationReading } from "./types";
 
 /** A ground-station source: a reading, or null when it has nothing fresh nearby. Never throws. */

@@ -2,9 +2,9 @@
 
 import { useId } from "react";
 import { SAMPLE_PLACES, UI } from "@/lib/i18n";
-import type { Lang } from "@/lib/types";
+import { PLACE_QUERY_LENGTH, type Lang, type Place } from "@/lib/types";
 import { useLocate } from "./hooks/useLocate";
-import { usePlaceSearch, type Place } from "./hooks/usePlaceSearch";
+import { usePlaceSearch } from "./hooks/usePlaceSearch";
 import Icon from "./Icon";
 
 export default function PlaceSearch({ lang, onPick }: { lang: Lang; onPick: (p: Place) => void }) {
@@ -37,7 +37,7 @@ export default function PlaceSearch({ lang, onPick }: { lang: Lang; onPick: (p: 
             onChange={(e) => search.setQ(e.target.value)}
             placeholder={t.searchPlaceholder}
             autoComplete="off"
-            maxLength={60}
+            maxLength={PLACE_QUERY_LENGTH.max}
             aria-controls={`${id}-list`}
           />
         </div>

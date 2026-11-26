@@ -3,9 +3,8 @@
 import type { CSSProperties } from "react";
 import { categoryByKey, categoryFor } from "@/lib/aqi";
 import { UI } from "@/lib/i18n";
-import type { ErrorCode, Lang, PlanView } from "@/lib/types";
+import type { ErrorCode, Lang, Place, PlanView } from "@/lib/types";
 import Gauge from "./Gauge";
-import type { Place } from "./hooks/usePlaceSearch";
 import Icon from "./Icon";
 import PlaceSearch from "./PlaceSearch";
 import Skyline, { SkylineHaze } from "./Skyline";

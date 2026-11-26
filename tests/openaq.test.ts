@@ -83,6 +83,7 @@ describe("toCandidate", () => {
   });
   it("rejects a stale value, a negative one and an absurd one", () => {
     expect(toCandidate(parsed, latest(7, 18, "2026-11-23T05:00:00Z"), KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
+    expect(toCandidate(parsed, latest(7, 18, "2026-11-24T00:00:00Z"), KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
     expect(toCandidate(parsed, latest(7, -4), KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
     expect(toCandidate(parsed, latest(7, 5000), KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
     expect(toCandidate(parsed, latest(7, null), KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
@@ -92,7 +93,7 @@ describe("toCandidate", () => {
     const p = pickLocations(locations(twoSensors), KOCHI.lat, KOCHI.lon, NOW)[0];
     const raw = {
       results: [
-        { sensorsId: 71, value: 200, datetime: { utc: "2026-11-23T07:30:00Z" } },
+        { sensorsId: 71, value: 200, datetime: { utc: "2026-11-23T13:00:00+05:30" } },
         { sensorsId: 999, value: 22, datetime: { utc: "2026-11-23T09:30:00Z" } },
       ],
     };

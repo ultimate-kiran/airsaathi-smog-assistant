@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { ok, rateLimitOrThrow, readJson, route } from "@/lib/http";
 import { answerQuestion } from "@/lib/container";
-import { ProfileSchema } from "@/lib/types";
+import { ProfileSchema, QUESTION_LENGTH } from "@/lib/types";
 
 export const maxDuration = 30;
 
 const AskSchema = z.object({
-  question: z.string().trim().min(2).max(300),
+  question: z.string().trim().min(QUESTION_LENGTH.min).max(QUESTION_LENGTH.max),
   profile: ProfileSchema,
 });
 

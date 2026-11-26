@@ -161,6 +161,9 @@ export const AiExplanationSchema = z.object({
 });
 export type AiExplanation = z.infer<typeof AiExplanationSchema>;
 
+export const QUESTION_LENGTH = { min: 2, max: 300 } as const;
+export const PLACE_QUERY_LENGTH = { min: 2, max: 60 } as const;
+
 export const AskReplySchema = z.object({ answer: z.string(), source: z.enum(["ai", "rules"]) });
 export type AskReply = z.infer<typeof AskReplySchema>;
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { haversineKm, toGrid } from "./distance";
+import { isRecentReading } from "./stationReading";
 import { env } from "./env";
 import type { StationReading } from "./types";
 
@@ -54,8 +55,6 @@ export interface OpenAqCandidate {
   updatedISO: string;
 }
 
-const hoursOld = (iso: string, now: Date) => (now.getTime() - new Date(iso).getTime()) / 3_600_000;
-
 /** Candidates worth a /latest call: fresh, within range, and carrying a µg/m³ PM2.5 sensor. */
 export function pickLocations(raw: unknown, lat: number, lon: number, now = new Date()): OpenAqLocation[] {
   const r = LocationsSchema.safeParse(raw);
@@ -63,7 +62,7 @@ export function pickLocations(raw: unknown, lat: number, lon: number, now = new 
   return r.data.results
     .filter((l) => {
       const last = l.datetimeLast?.utc;
-      if (!last || Number.isNaN(new Date(last).getTime()) || hoursOld(last, now) > MAX_AGE_H) return false;
+      if (!last || !isRecentReading(last, now, MAX_AGE_H)) return false;
       return l.sensors.some((s) => s.parameter.name === "pm25" && s.parameter.units === "µg/m³");
     })
     .map((l) => ({ l, km: haversineKm(lat, lon, l.coordinates.latitude, l.coordinates.longitude) }))
@@ -78,8 +77,8 @@ function freshest(loc: OpenAqLocation, latest: OpenAqLatest, param: string, now:
   const ids = new Set(loc.sensors.filter((s) => s.parameter.name === param && s.parameter.units === "µg/m³").map((s) => s.id));
   return latest
     .filter((x) => ids.has(x.sensorsId) && x.value !== null && x.value >= 0 && x.value <= PM25_MAX)
-    .filter((x) => !Number.isNaN(new Date(x.datetime.utc).getTime()) && hoursOld(x.datetime.utc, now) <= MAX_AGE_H)
-    .sort((a, b) => b.datetime.utc.localeCompare(a.datetime.utc))[0];
+    .filter((x) => isRecentReading(x.datetime.utc, now, MAX_AGE_H))
+    .sort((a, b) => Date.parse(b.datetime.utc) - Date.parse(a.datetime.utc))[0];
 }
 
 /** Pure: turn one location plus its latest values into a candidate, or null if nothing usable. */
@@ -123,12 +122,11 @@ export function aggregate(cands: OpenAqCandidate[]): StationReading | null {
   const all = cands.map((c) => c.pm25);
   const ratio = Math.max(...all) / Math.max(Math.min(...all), 1);
   const pm10s = used.map((c) => c.pm10).filter((v): v is number => v !== null);
-  const nearest = [...used].sort((a, b) => a.km - b.km)[0];
-  const newest = used.map((c) => c.updatedISO).sort().at(-1) as string;
+  const newest = used.reduce((a, b) => Date.parse(a.updatedISO) >= Date.parse(b.updatedISO) ? a : b);
   return {
-    name: used.length === 1 ? nearest.name : `${used.length} stations`,
+    name: used.length === 1 ? used[0].name : `${used.length} stations`,
     km: Math.max(...used.map((c) => c.km)),
-    updatedISO: newest,
+    updatedISO: newest.updatedISO,
     pm25: median(used.map((c) => c.pm25)),
     pm10: pm10s.length > 0 ? median(pm10s) : null,
     count: used.length,

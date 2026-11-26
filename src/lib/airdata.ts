@@ -14,6 +14,8 @@ const AirSchema = z.object({
     time: z.array(z.string()),
     pm2_5: z.array(z.number().nullable()),
     pm10: z.array(z.number().nullable()),
+  }).refine(({ time, pm2_5, pm10 }) => time.length === pm2_5.length && time.length === pm10.length, {
+    message: "Hourly timestamps and pollutant readings must have matching lengths",
   }),
 });
 
