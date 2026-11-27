@@ -4,36 +4,36 @@ import type { ReactNode } from "react";
 import { showsCigarettes, toCigarettes } from "@/lib/aqi";
 import { formatInt, formatRange, round1 } from "@/lib/format";
 import { UI } from "@/lib/i18n";
-import type { ActionGroup, ActionOut, Lang, PlanView } from "@/lib/types";
+import { ACTION_GROUPS, type ActionOut, type Lang, type PlanView } from "@/lib/types";
 import Icon from "./Icon";
 
-const ORDER: ActionGroup[] = ["health", "move", "outdoor", "indoor", "kitchen", "community"];
 /** How many counted actions are featured under "Start here". */
 const FEATURED_COUNT = 3;
 
 /** Bolds the first number in a sentence so impact figures are easy to scan, in either language. */
-function emph(text: string): ReactNode {
-  const m = /^(.*?)([\d][\d,.]*)(.*)$/s.exec(text);
-  if (!m) return text;
+function boldFirstNumber(text: string): ReactNode {
+  const match = /^(.*?)([\d][\d,.]*)(.*)$/s.exec(text);
+  if (!match) return text;
+  const [, before, number, after] = match;
   return (
     <>
-      {m[1]}
-      <strong>{m[2]}</strong>
-      {m[3]}
+      {before}
+      <strong>{number}</strong>
+      {after}
     </>
   );
 }
 
-const hasNumbers = (a: ActionOut) => !!a.impact.inhaledPm25Ug || !!a.impact.co2eKg;
+const hasNumbers = (action: ActionOut) => !!action.impact.inhaledPm25Ug || !!action.impact.co2eKg;
 
-function ActionMeta({ a, lang }: { a: ActionOut; lang: Lang }) {
+function ActionMeta({ action, lang }: { action: ActionOut; lang: Lang }) {
   return (
     <div className="action__meta">
-      <span className="tag">{UI[lang].groups[a.group]}</span>
-      {a.window && (
+      <span className="tag">{UI[lang].groups[action.group]}</span>
+      {action.window && (
         <span className="badge">
           <Icon name="clock" size={14} />
-          {formatRange(a.window, lang)}
+          {formatRange(action.window, lang)}
         </span>
       )}
     </div>
@@ -48,11 +48,11 @@ function ImpactStats({ impact, lang }: { impact: ActionOut["impact"]; lang: Lang
     <p className="action__impact">
       {!!ug && (
         <span className="stat stat--pm">
-          {emph(t.inhaled(Math.round(ug)))}
+          {boldFirstNumber(t.inhaled(Math.round(ug)))}
           {showsCigarettes(cig) && <small>{t.cigEq(cig)}</small>}
         </span>
       )}
-      {!!co2 && <span className="stat stat--co2">{emph(t.co2(round1(co2)))}</span>}
+      {!!co2 && <span className="stat stat--co2">{boldFirstNumber(t.co2(round1(co2)))}</span>}
     </p>
   );
 }
@@ -69,42 +69,42 @@ function HowCalculated({ assumption, lang }: { assumption: string; lang: Lang })
 }
 
 interface ItemProps {
-  a: ActionOut;
+  action: ActionOut;
   lang: Lang;
   isDone: boolean;
-  onToggle: (a: ActionOut) => void;
+  onToggle: (action: ActionOut) => void;
   featured?: boolean;
 }
 
-function ActionItem({ a, lang, isDone, onToggle, featured }: ItemProps) {
+function ActionItem({ action, lang, isDone, onToggle, featured }: ItemProps) {
   const t = UI[lang];
-  const measurable = hasNumbers(a);
-  const className = ["action", `g-${a.group}`, isDone && "is-done", featured && "action--featured"]
+  const measurable = hasNumbers(action);
+  const className = ["action", `g-${action.group}`, isDone && "is-done", featured && "action--featured"]
     .filter(Boolean)
     .join(" ");
 
   return (
     <li className={className}>
-      <ActionMeta a={a} lang={lang} />
-      <h3>{a.title}</h3>
+      <ActionMeta action={action} lang={lang} />
+      <h3>{action.title}</h3>
       <p className="action__for">
-        {t.forLabel}: {a.forWhom.join(", ")}
+        {t.forLabel}: {action.forWhom.join(", ")}
       </p>
-      <p className="action__why">{a.why}</p>
-      {a.note && (
+      <p className="action__why">{action.why}</p>
+      {action.note && (
         <p className="action__note">
           <Icon name="sparkle" size={16} />
           <span>
-            <strong>{t.forHousehold}.</strong> {a.note}
+            <strong>{t.forHousehold}.</strong> {action.note}
           </span>
         </p>
       )}
-      {measurable && <ImpactStats impact={a.impact} lang={lang} />}
-      <HowCalculated assumption={a.assumption} lang={lang} />
-      {!a.counted && <p className="muted">{t.pickOne}</p>}
+      {measurable && <ImpactStats impact={action.impact} lang={lang} />}
+      <HowCalculated assumption={action.assumption} lang={lang} />
+      {!action.counted && <p className="muted">{t.pickOne}</p>}
       {measurable && (
         <label className="done">
-          <input type="checkbox" checked={isDone} onChange={() => onToggle(a)} />
+          <input type="checkbox" checked={isDone} onChange={() => onToggle(action)} />
           <span>
             <Icon name="check" size={16} />
             {t.didThis}
@@ -174,23 +174,33 @@ interface Props {
   plan: PlanView;
   lang: Lang;
   doneIds: Set<string>;
-  onToggle: (a: ActionOut) => void;
+  onToggle: (action: ActionOut) => void;
 }
 
 export default function Actions({ plan, lang, doneIds, onToggle }: Props) {
   const t = UI[lang];
-  const top = plan.actions.filter((a) => a.counted).slice(0, FEATURED_COUNT);
-  const topIds = new Set(top.map((a) => a.id));
-  const rest = ORDER.flatMap((g) => plan.actions.filter((a) => a.group === g && !topIds.has(a.id)));
-  const item = (a: ActionOut, featured = false) => (
-    <ActionItem key={a.id} a={a} lang={lang} isDone={doneIds.has(a.id)} onToggle={onToggle} featured={featured} />
+  const top = plan.actions.filter((action) => action.counted).slice(0, FEATURED_COUNT);
+  const topIds = new Set(top.map((action) => action.id));
+  // Everything else, grouped in the order ACTION_GROUPS lists the groups.
+  const rest = ACTION_GROUPS.flatMap((group) =>
+    plan.actions.filter((action) => action.group === group && !topIds.has(action.id)),
+  );
+  const renderItem = (action: ActionOut, featured = false) => (
+    <ActionItem
+      key={action.id}
+      action={action}
+      lang={lang}
+      isDone={doneIds.has(action.id)}
+      onToggle={onToggle}
+      featured={featured}
+    />
   );
 
   return (
     <>
       <section className="block" aria-labelledby="start-title">
         <h2 id="start-title">{t.startHere}</h2>
-        <ol className="actions actions--top">{top.map((a) => item(a, true))}</ol>
+        <ol className="actions actions--top">{top.map((action) => renderItem(action, true))}</ol>
       </section>
 
       <Totals totals={plan.totals} lang={lang} />
@@ -198,7 +208,7 @@ export default function Actions({ plan, lang, doneIds, onToggle }: Props) {
       {rest.length > 0 && (
         <section className="block" aria-labelledby="more-title">
           <h2 id="more-title">{t.more}</h2>
-          <ul className="actions actions--more">{rest.map((a) => item(a))}</ul>
+          <ul className="actions actions--more">{rest.map((action) => renderItem(action))}</ul>
         </section>
       )}
 

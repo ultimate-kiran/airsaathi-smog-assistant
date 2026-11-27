@@ -7,7 +7,6 @@ import {
   PlanViewSchema,
   type ErrorCode,
   type Lang,
-  type Place,
   type Profile,
 } from "../types";
 
@@ -54,8 +53,6 @@ const post = <S extends z.ZodType>(schema: S, path: string, body: unknown, signa
     body: JSON.stringify(body),
     signal,
   });
-
-export type PlaceResult = Place;
 
 export const api = {
   plan: (profile: Profile, signal?: AbortSignal) => post(PlanViewSchema, "/api/plan", profile, signal),

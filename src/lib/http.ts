@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { z } from "zod";
 import { AppError } from "./errors";
+import { RATE_WINDOW_MS, ROUTE_LIMITS, type RouteName } from "./limits";
 import { errorName, log } from "./log";
 import { clientIp, limiter } from "./ratelimit";
 import type { ErrorCode } from "./types";
@@ -40,8 +41,11 @@ export function ok(body: unknown, headers: Record<string, string> = NO_STORE): N
   return NextResponse.json(body, { headers });
 }
 
-export async function rateLimitOrThrow(req: Request, scope: string, perMinute: number): Promise<void> {
-  if (!(await limiter().hit(`${scope}:${clientIp(req)}`, perMinute, 60_000))) throw new AppError("rate_limited");
+/** Counts this request against the route's per-client limit (see limits.ts). */
+export async function rateLimitOrThrow(req: Request, routeName: RouteName): Promise<void> {
+  const { perMinute } = ROUTE_LIMITS[routeName];
+  const allowed = await limiter().hit(`${routeName}:${clientIp(req)}`, perMinute, RATE_WINDOW_MS);
+  if (!allowed) throw new AppError("rate_limited");
 }
 
 async function readBody(req: Request, maxBytes: number): Promise<string> {
@@ -66,6 +70,17 @@ async function readBody(req: Request, maxBytes: number): Promise<string> {
   }
 }
 
+/** Validates input against a schema, or throws AppError("invalid") listing each problem field. */
+function validate<S extends z.ZodType>(schema: S, input: unknown): z.infer<S> {
+  const parsed = schema.safeParse(input);
+  if (!parsed.success) {
+    throw new AppError("invalid", {
+      issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+    });
+  }
+  return parsed.data;
+}
+
 /** Size-capped JSON body validated against a schema. Throws AppError on any problem. */
 export async function readJson<S extends z.ZodType>(req: Request, schema: S, maxBytes: number): Promise<z.infer<S>> {
   const raw = await readBody(req, maxBytes);
@@ -75,13 +90,12 @@ export async function readJson<S extends z.ZodType>(req: Request, schema: S, max
   } catch {
     throw new AppError("bad_json");
   }
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) {
-    throw new AppError("invalid", {
-      issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-    });
-  }
-  return parsed.data;
+  return validate(schema, body);
+}
+
+/** The URL query string as a plain object, validated against a schema the same way JSON bodies are. */
+export function readQuery<S extends z.ZodType>(req: Request, schema: S): z.infer<S> {
+  return validate(schema, Object.fromEntries(new URL(req.url).searchParams));
 }
 
 type Handler = (req: Request) => Promise<NextResponse>;
@@ -94,11 +108,11 @@ export function route(name: string, handler: Handler): Handler {
     let res: NextResponse;
     try {
       res = await handler(req);
-    } catch (e) {
-      if (e instanceof AppError) {
-        res = fail(e.code, e.extra);
+    } catch (error) {
+      if (error instanceof AppError) {
+        res = fail(error.code, error.extra);
       } else {
-        log("error", "route.crash", { route: name, requestId, reason: errorName(e) });
+        log("error", "route.crash", { route: name, requestId, reason: errorName(error) });
         res = fail("internal");
       }
     }

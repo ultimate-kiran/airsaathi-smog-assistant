@@ -1,4 +1,5 @@
 import { env } from "./env";
+import { UPSTREAM_TIMEOUT_MS } from "./limits";
 import { errorName, log } from "./log";
 
 /**
@@ -13,17 +14,22 @@ export interface RateLimiter {
   hit(key: string, limit: number, windowMs: number): Promise<boolean>;
 }
 
+/** Above this many tracked clients, the memory limiter drops the ones with no recent hits. */
+const MEMORY_PRUNE_ABOVE = 5000;
+
 export class MemoryLimiter implements RateLimiter {
   private readonly hits = new Map<string, number[]>();
 
   async hit(key: string, limit: number, windowMs: number): Promise<boolean> {
     const now = Date.now();
-    const recent = (this.hits.get(key) ?? []).filter((t) => now - t < windowMs);
+    const recent = (this.hits.get(key) ?? []).filter((time) => now - time < windowMs);
     const allowed = recent.length < limit;
     if (allowed) recent.push(now);
     this.hits.set(key, recent);
-    if (this.hits.size > 5000) {
-      for (const [k, v] of this.hits) if (v.every((t) => now - t >= windowMs)) this.hits.delete(k);
+    if (this.hits.size > MEMORY_PRUNE_ABOVE) {
+      for (const [client, times] of this.hits) {
+        if (times.every((time) => now - time >= windowMs)) this.hits.delete(client);
+      }
     }
     return allowed;
   }
@@ -54,7 +60,7 @@ export class UpstashLimiter implements RateLimiter {
           ["PEXPIRE", bucket(current), String(windowMs * 2)],
           ["GET", bucket(current - 1)],
         ]),
-        signal: AbortSignal.timeout(1500),
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS.rateLimitStore),
         cache: "no-store",
       });
       if (!res.ok) throw new Error(`upstash ${res.status}`);
@@ -75,8 +81,8 @@ let shared: { url: string; token: string; limiter: RateLimiter } | null = null;
 
 /** The cross-instance limiter, or null when only per-instance memory is available. */
 export function sharedLimiter(): RateLimiter | null {
-  const l = limiter();
-  return l === memory ? null : l;
+  const active = limiter();
+  return active === memory ? null : active;
 }
 
 export function limiter(): RateLimiter {
@@ -96,10 +102,10 @@ export function limiter(): RateLimiter {
 export function clientIp(req: Request): string {
   const real = req.headers.get("x-real-ip")?.trim();
   if (real) return real;
-  const fwd = req.headers.get("x-forwarded-for");
-  const last = fwd
+  const forwarded = req.headers.get("x-forwarded-for");
+  const last = forwarded
     ?.split(",")
-    .map((s) => s.trim())
+    .map((entry) => entry.trim())
     .filter(Boolean)
     .at(-1);
   return last || "unknown";

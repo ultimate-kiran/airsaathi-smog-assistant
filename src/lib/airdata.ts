@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { categoryFor, indiaAqi } from "./aqi";
 import { toGrid } from "./distance";
+import { UPSTREAM_CACHE_S, UPSTREAM_TIMEOUT_MS } from "./limits";
 import type { AirSource, HourPoint } from "./types";
 
 const AirSchema = z.object({
@@ -82,8 +83,8 @@ export async function fetchAir(lat: number, lon: number): Promise<AirSnapshot> {
     "https://air-quality-api.open-meteo.com/v1/air-quality" +
     `?latitude=${la}&longitude=${lo}&current=pm2_5,pm10&hourly=pm2_5,pm10&forecast_days=2&timezone=auto`;
   const res = await fetch(url, {
-    signal: AbortSignal.timeout(8000),
-    next: { revalidate: 600 },
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS.airModel),
+    next: { revalidate: UPSTREAM_CACHE_S.air },
   });
   if (!res.ok) throw new Error(`Air quality service returned ${res.status}`);
   return snapshotFromOpenMeteo(await res.json());

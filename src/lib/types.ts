@@ -1,12 +1,14 @@
 import { z } from "zod";
 
-export type Lang = "en" | "hi";
+/** The two interface languages: English and Hindi. */
+export const LANGS = ["en", "hi"] as const;
+export type Lang = (typeof LANGS)[number];
 export type Bilingual = { en: string; hi: string };
 
-export const COMMUTE_MODES = ["car", "bike", "bus", "metro", "walk", "wfh"] as const;
-export const COOKING_FUELS = ["lpg", "png", "induction", "biomass"] as const;
-export const HEATING_TYPES = ["none", "electric", "biomass"] as const;
-export const WINDOW_HABITS = ["open", "mostly-closed"] as const;
+const COMMUTE_MODES = ["car", "bike", "bus", "metro", "walk", "wfh"] as const;
+const COOKING_FUELS = ["lpg", "png", "induction", "biomass"] as const;
+const HEATING_TYPES = ["none", "electric", "biomass"] as const;
+const WINDOW_HABITS = ["open", "mostly-closed"] as const;
 
 export type CommuteMode = (typeof COMMUTE_MODES)[number];
 export type CookingFuel = (typeof COOKING_FUELS)[number];
@@ -27,7 +29,7 @@ export const ProfileSchema = z.object({
   lat: z.number().min(-90).max(90),
   lon: z.number().min(-180).max(180),
   place: z.string().trim().min(1).max(80),
-  lang: z.enum(["en", "hi"]).default("en"),
+  lang: z.enum(LANGS).default("en"),
   household: z.object({
     adults: boundedNumber(PROFILE_LIMITS.adults).int(),
     children: boundedNumber(PROFILE_LIMITS.children).int(),
@@ -56,7 +58,7 @@ export type Profile = z.infer<typeof ProfileSchema>;
  * the server builds and the check the browser runs on every reply cannot drift apart.
  */
 
-export const CATEGORY_KEYS = ["good", "satisfactory", "moderate", "poor", "veryPoor", "severe"] as const;
+const CATEGORY_KEYS = ["good", "satisfactory", "moderate", "poor", "veryPoor", "severe"] as const;
 export type CategoryKey = (typeof CATEGORY_KEYS)[number];
 
 export const ACTION_GROUPS = ["health", "move", "outdoor", "indoor", "kitchen", "community"] as const;
@@ -65,11 +67,11 @@ export type ActionGroup = (typeof ACTION_GROUPS)[number];
 const hour = z.number().int().min(0).max(23);
 
 /** [start, end) in local hours; end may wrap past midnight. */
-export const HourRangeSchema = z.object({ start: hour, end: hour });
+const HourRangeSchema = z.object({ start: hour, end: hour });
 export type HourRange = z.infer<typeof HourRangeSchema>;
 
 /** One hour of the forecast. Hours are numbers; the UI formats them in the reader's language. */
-export const HourPointSchema = z.object({
+const HourPointSchema = z.object({
   hour,
   pm25: z.number(),
   pm10: z.number(),
@@ -92,7 +94,7 @@ export interface StationReading {
   uncertain?: boolean;
 }
 
-export const ImpactSchema = z.object({
+const ImpactSchema = z.object({
   /** micrograms of PM2.5 you avoid inhaling, per day */
   inhaledPm25Ug: z.number().optional(),
   /** kg CO2e avoided, per day */
@@ -100,7 +102,7 @@ export const ImpactSchema = z.object({
 });
 export type Impact = z.infer<typeof ImpactSchema>;
 
-export const ActionOutSchema = z.object({
+const ActionOutSchema = z.object({
   id: z.string(),
   group: z.enum(ACTION_GROUPS),
   /** actions sharing an exclusive key are alternatives; only the best counts toward totals */
@@ -121,7 +123,7 @@ export const ActionOutSchema = z.object({
 });
 export type ActionOut = z.infer<typeof ActionOutSchema>;
 
-export const AirSourceSchema = z.discriminatedUnion("kind", [
+const AirSourceSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("model") }),
   z.object({
     kind: z.literal("station"),
@@ -134,7 +136,7 @@ export const AirSourceSchema = z.discriminatedUnion("kind", [
 ]);
 export type AirSource = z.infer<typeof AirSourceSchema>;
 
-export const PlanTextSchema = z.object({
+const PlanTextSchema = z.object({
   source: z.enum(["ai", "rules"]),
   headline: z.string(),
   summary: z.string(),
@@ -142,9 +144,9 @@ export const PlanTextSchema = z.object({
 });
 export type PlanText = z.infer<typeof PlanTextSchema>;
 
-export const PlanResponseSchema = z.object({
+const PlanResponseSchema = z.object({
   place: z.string(),
-  lang: z.enum(["en", "hi"]),
+  lang: z.enum(LANGS),
   fetchedAt: z.string(),
   source: AirSourceSchema,
   aqi: z.object({ value: z.number(), category: z.enum(CATEGORY_KEYS), pm25: z.number(), pm10: z.number() }),

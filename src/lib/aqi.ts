@@ -98,9 +98,9 @@ export function categoryByKey(key: CategoryKey): Category {
 }
 
 /** Berkeley Earth rule of thumb: 22 µg/m³ of PM2.5 over 24 h is roughly one cigarette a day. */
-export const UG_PER_CIGARETTE_DAY = 22;
+const UG_PER_CIGARETTE_DAY = 22;
 /** Dose behind that rule: 22 µg/m³ × ~15 m³ of air breathed per day. */
-export const INHALED_UG_PER_CIGARETTE = 330;
+const INHALED_UG_PER_CIGARETTE = 330;
 
 /** Avoided (or inhaled) PM2.5 dose expressed as cigarettes. */
 export const toCigarettes = (inhaledUg: number) => round1(inhaledUg / INHALED_UG_PER_CIGARETTE);

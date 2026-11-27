@@ -169,3 +169,11 @@ describe("nameFor", () => {
     await expect(nameFor(28.61, 77.04)).resolves.toBeNull();
   });
 });
+
+describe("GET /api/reverse error codes", () => {
+  it("separates bad input from a place outside India", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    expect(await (await reverse(get("lat=abc&lon=77"))).json()).toMatchObject({ code: "invalid" });
+    expect(await (await reverse(get("lat=51.5&lon=-0.12"))).json()).toMatchObject({ code: "outside_india" });
+  });
+});

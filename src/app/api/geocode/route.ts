@@ -1,11 +1,15 @@
-import { AppError } from "@/lib/errors";
-import { ok, rateLimitOrThrow, route } from "@/lib/http";
+import { z } from "zod";
+import { ok, rateLimitOrThrow, readQuery, route } from "@/lib/http";
 import { places } from "@/lib/container";
 import { PLACE_QUERY_LENGTH } from "@/lib/types";
 
+const SearchQuery = z.object({
+  q: z.string().trim().min(PLACE_QUERY_LENGTH.min).max(PLACE_QUERY_LENGTH.max),
+});
+
+/** Places in India whose name matches what the user typed. */
 export const GET = route("geocode", async (req) => {
-  await rateLimitOrThrow(req, "geo", 40);
-  const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
-  if (q.length < PLACE_QUERY_LENGTH.min || q.length > PLACE_QUERY_LENGTH.max) throw new AppError("invalid");
-  return ok({ places: await places.search(q) });
+  await rateLimitOrThrow(req, "geocode");
+  const { q: query } = readQuery(req, SearchQuery);
+  return ok({ places: await places.search(query) });
 });

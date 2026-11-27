@@ -13,7 +13,7 @@ export default defineConfig({
       include: ["src/**"],
       reporter: ["text-summary", "text"],
       // CI fails if coverage drops below these floors (set a little under the current figures).
-      thresholds: { statements: 93, branches: 85, functions: 91, lines: 95 },
+      thresholds: { statements: 95, branches: 87, functions: 95, lines: 97 },
     },
   },
 });

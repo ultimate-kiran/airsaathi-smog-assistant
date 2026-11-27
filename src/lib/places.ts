@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TtlCache } from "./cache";
 import { toGrid } from "./distance";
+import { UPSTREAM_CACHE_S, UPSTREAM_TIMEOUT_MS } from "./limits";
 import { AppError } from "./errors";
 import type { RateLimiter } from "./ratelimit";
 import { AddressSchema, placeName } from "./placename";
@@ -26,7 +27,7 @@ export async function searchPlaces(q: string): Promise<Place[]> {
   try {
     const res = await fetch(
       `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=en&format=json&countryCode=IN`,
-      { signal: AbortSignal.timeout(6000), next: { revalidate: 3600 } },
+      { signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS.places), next: { revalidate: UPSTREAM_CACHE_S.placeSearch } },
     );
     if (!res.ok) throw new Error("upstream");
     const data = SearchSchema.parse(await res.json());
@@ -74,8 +75,8 @@ async function lookupAddress(lat: number, lon: number, lang: Lang): Promise<Plac
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=${lang === "hi" ? "hi,en" : "en"}&lat=${lat}&lon=${lon}`,
       {
         headers: { "User-Agent": "AirSaathi-smog-assistant" },
-        signal: AbortSignal.timeout(6000),
-        next: { revalidate: 86_400 },
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS.places),
+        next: { revalidate: UPSTREAM_CACHE_S.placeName },
       },
     );
     if (!res.ok) throw new Error("upstream");

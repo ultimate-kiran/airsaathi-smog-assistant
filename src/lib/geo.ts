@@ -43,6 +43,9 @@ export interface LocateOptions {
 /** A fix worse than this is the browser guessing from the network, not from GPS or Wi-Fi positioning. */
 export const APPROXIMATE_OVER_M = 3000;
 
+/** How long to wait for the place name before showing the position without one. */
+const NAME_LOOKUP_TIMEOUT_MS = 8000;
+
 export function locate(geo: GeoLike | undefined, opts: LocateOptions = {}): Promise<Fix> {
   const { goodEnough = 100, settleMs = 8000, timeoutMs = 15000 } = opts;
   if (!geo) return Promise.reject(new GeoError("unsupported"));
@@ -112,7 +115,7 @@ export type Named = Pick<Place, "name" | "short">;
 /** The place name for a position, or null when the lookup fails (the caller then keeps a generic label). */
 export async function nameFor(lat: number, lon: number, lang: Lang = "en"): Promise<Named | null> {
   try {
-    const place = await api.reverse(lat, lon, lang, AbortSignal.timeout(8000));
+    const place = await api.reverse(lat, lon, lang, AbortSignal.timeout(NAME_LOOKUP_TIMEOUT_MS));
     return place?.name && place.short ? { name: place.name, short: place.short } : null;
   } catch {
     return null;

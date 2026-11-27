@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { haversineKm, toGrid } from "./distance";
+import { UPSTREAM_CACHE_S, UPSTREAM_TIMEOUT_MS } from "./limits";
 import { isRecentReading } from "./stationReading";
 import { env } from "./env";
 import type { StationReading } from "./types";
@@ -21,6 +22,8 @@ const MAX_AGE_H = 3;
 const MAX_LOCATIONS = 5; // nearest candidates whose latest values we fetch (keeps calls per plan low)
 const PM25_MAX = 1000;
 const DISAGREE_RATIO = 2.5;
+/** OpenAQ's parameter id for PM2.5. */
+const PM25_PARAMETER_ID = 2;
 
 const LocationsSchema = z.object({
   results: z.array(
@@ -53,60 +56,70 @@ export interface OpenAqCandidate {
   updatedISO: string;
 }
 
-/** Candidates worth a /latest call: fresh, within range, and carrying a µg/m³ PM2.5 sensor. */
-export function pickLocations(raw: unknown, lat: number, lon: number, now = new Date()): OpenAqLocation[] {
-  const r = LocationsSchema.safeParse(raw);
-  if (!r.success) return [];
-  return r.data.results
-    .filter((l) => {
-      const last = l.datetimeLast?.utc;
-      if (!last || !isRecentReading(last, now, MAX_AGE_H)) return false;
-      return l.sensors.some((s) => s.parameter.name === "pm25" && s.parameter.units === "µg/m³");
-    })
-    .map((l) => ({ l, km: haversineKm(lat, lon, l.coordinates.latitude, l.coordinates.longitude) }))
-    .filter((x) => x.km <= RADIUS_M / 1000)
-    .sort((a, b) => a.km - b.km)
-    .slice(0, MAX_LOCATIONS)
-    .map((x) => x.l);
+/** True when this sensor reports the given pollutant in µg/m³ (some report ppm or other units). */
+function measuresInUg(sensor: OpenAqLocation["sensors"][number], pollutant: string): boolean {
+  return sensor.parameter.name === pollutant && sensor.parameter.units === "µg/m³";
 }
 
-/** Freshest valid value for one parameter at one location (a location can hold several sensors). */
-function freshest(loc: OpenAqLocation, latest: OpenAqLatest, param: string, now: Date) {
-  const ids = new Set(
-    loc.sensors.filter((s) => s.parameter.name === param && s.parameter.units === "µg/m³").map((s) => s.id),
+/** Candidates worth a /latest call: fresh, within range, and carrying a µg/m³ PM2.5 sensor. */
+export function pickLocations(raw: unknown, lat: number, lon: number, now = new Date()): OpenAqLocation[] {
+  const parsed = LocationsSchema.safeParse(raw);
+  if (!parsed.success) return [];
+  return parsed.data.results
+    .filter((location) => {
+      const lastSeen = location.datetimeLast?.utc;
+      if (!lastSeen || !isRecentReading(lastSeen, now, MAX_AGE_H)) return false;
+      return location.sensors.some((sensor) => measuresInUg(sensor, "pm25"));
+    })
+    .map((location) => ({
+      location,
+      km: haversineKm(lat, lon, location.coordinates.latitude, location.coordinates.longitude),
+    }))
+    .filter(({ km }) => km <= RADIUS_M / 1000)
+    .sort((a, b) => a.km - b.km)
+    .slice(0, MAX_LOCATIONS)
+    .map(({ location }) => location);
+}
+
+/** Freshest valid value for one pollutant at one location (a location can hold several sensors). */
+function freshest(location: OpenAqLocation, latest: OpenAqLatest, pollutant: string, now: Date) {
+  const sensorIds = new Set(
+    location.sensors.filter((sensor) => measuresInUg(sensor, pollutant)).map((sensor) => sensor.id),
   );
   return latest
-    .filter((x) => ids.has(x.sensorsId) && x.value !== null && x.value >= 0 && x.value <= PM25_MAX)
-    .filter((x) => isRecentReading(x.datetime.utc, now, MAX_AGE_H))
+    .filter((reading) => sensorIds.has(reading.sensorsId))
+    .filter((reading) => reading.value !== null && reading.value >= 0 && reading.value <= PM25_MAX)
+    .filter((reading) => isRecentReading(reading.datetime.utc, now, MAX_AGE_H))
     .sort((a, b) => Date.parse(b.datetime.utc) - Date.parse(a.datetime.utc))[0];
 }
 
 /** Pure: turn one location plus its latest values into a candidate, or null if nothing usable. */
 export function toCandidate(
-  loc: OpenAqLocation,
+  location: OpenAqLocation,
   latest: unknown,
   from: { lat: number; lon: number },
   now = new Date(),
 ): OpenAqCandidate | null {
-  const r = LatestSchema.safeParse(latest);
-  if (!r.success) return null;
-  const pm25 = freshest(loc, r.data.results, "pm25", now);
+  const parsed = LatestSchema.safeParse(latest);
+  if (!parsed.success) return null;
+  const pm25 = freshest(location, parsed.data.results, "pm25", now);
   if (!pm25 || pm25.value === null) return null;
-  const pm10 = freshest(loc, r.data.results, "pm10", now);
+  const pm10 = freshest(location, parsed.data.results, "pm10", now);
+  const { latitude, longitude } = location.coordinates;
   return {
-    name: (loc.name ?? "Station").trim().slice(0, 80) || "Station",
-    km: Math.round(haversineKm(from.lat, from.lon, loc.coordinates.latitude, loc.coordinates.longitude)),
-    monitor: loc.isMonitor === true,
+    name: (location.name ?? "Station").trim().slice(0, 80) || "Station",
+    km: Math.round(haversineKm(from.lat, from.lon, latitude, longitude)),
+    monitor: location.isMonitor === true,
     pm25: pm25.value,
     pm10: pm10?.value ?? null,
     updatedISO: pm25.datetime.utc,
   };
 }
 
-function median(xs: number[]): number {
-  const s = [...xs].sort((a, b) => a - b);
-  const m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
 /**
@@ -114,49 +127,51 @@ function median(xs: number[]): number {
  * Uncertain when only one station backs the number, only low-cost sensors exist, or the
  * fresh stations disagree by more than DISAGREE_RATIO.
  */
-export function aggregate(cands: OpenAqCandidate[]): StationReading | null {
-  if (cands.length === 0) return null;
-  const monitors = cands.filter((c) => c.monitor);
-  const used = monitors.length > 0 ? monitors : cands;
-  const all = cands.map((c) => c.pm25);
-  const ratio = Math.max(...all) / Math.max(Math.min(...all), 1);
-  const pm10s = used.map((c) => c.pm10).filter((v): v is number => v !== null);
+export function aggregate(candidates: OpenAqCandidate[]): StationReading | null {
+  if (candidates.length === 0) return null;
+  const monitors = candidates.filter((candidate) => candidate.monitor);
+  const used = monitors.length > 0 ? monitors : candidates;
+  const allPm25 = candidates.map((candidate) => candidate.pm25);
+  const spread = Math.max(...allPm25) / Math.max(Math.min(...allPm25), 1);
+  const pm10s = used.map((candidate) => candidate.pm10).filter((value): value is number => value !== null);
   const newest = used.reduce((a, b) => (Date.parse(a.updatedISO) >= Date.parse(b.updatedISO) ? a : b));
   return {
     name: used.length === 1 ? used[0].name : `${used.length} stations`,
-    km: Math.max(...used.map((c) => c.km)),
+    km: Math.max(...used.map((candidate) => candidate.km)),
     updatedISO: newest.updatedISO,
-    pm25: median(used.map((c) => c.pm25)),
+    pm25: median(used.map((candidate) => candidate.pm25)),
     pm10: pm10s.length > 0 ? median(pm10s) : null,
     count: used.length,
-    uncertain: used.length === 1 || monitors.length === 0 || ratio > DISAGREE_RATIO,
+    uncertain: used.length === 1 || monitors.length === 0 || spread > DISAGREE_RATIO,
   };
 }
 
-async function get(path: string, key: string): Promise<unknown> {
+/** GET from the OpenAQ v3 API. The key goes in a header, never in the URL. */
+async function getJson(path: string, apiKey: string): Promise<unknown> {
   const res = await fetch(`https://api.openaq.org/v3${path}`, {
-    headers: { "X-API-Key": key }, // header only, never in the URL
-    signal: AbortSignal.timeout(5000),
-    next: { revalidate: 600 },
+    headers: { "X-API-Key": apiKey },
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS.station),
+    next: { revalidate: UPSTREAM_CACHE_S.air },
   });
   if (!res.ok) throw new Error(`OpenAQ ${res.status}`);
   return res.json();
 }
 
 export async function fetchOpenAq(lat: number, lon: number): Promise<StationReading | null> {
-  const key = env().OPENAQ_API_KEY;
-  if (!key) return null;
+  const apiKey = env().OPENAQ_API_KEY;
+  if (!apiKey) return null;
   try {
-    const q = `coordinates=${toGrid(lat).toFixed(2)},${toGrid(lon).toFixed(2)}&radius=${RADIUS_M}&parameters_id=2&limit=20`;
-    const locs = pickLocations(await get(`/locations?${q}`, key), lat, lon);
-    const settled = await Promise.allSettled(locs.map((l) => get(`/locations/${l.id}/latest`, key)));
-    const cands: OpenAqCandidate[] = [];
-    settled.forEach((s, i) => {
-      if (s.status !== "fulfilled") return;
-      const c = toCandidate(locs[i], s.value, { lat, lon });
-      if (c) cands.push(c);
+    const query = `coordinates=${toGrid(lat).toFixed(2)},${toGrid(lon).toFixed(2)}&radius=${RADIUS_M}&parameters_id=${PM25_PARAMETER_ID}&limit=20`;
+    const locations = pickLocations(await getJson(`/locations?${query}`, apiKey), lat, lon);
+    const latest = await Promise.allSettled(
+      locations.map((location) => getJson(`/locations/${location.id}/latest`, apiKey)),
+    );
+    const candidates = locations.flatMap((location, i) => {
+      const result = latest[i];
+      if (result.status !== "fulfilled") return [];
+      return toCandidate(location, result.value, { lat, lon }) ?? [];
     });
-    return aggregate(cands);
+    return aggregate(candidates);
   } catch {
     return null; // never fail the plan because an optional source is down
   }

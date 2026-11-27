@@ -1,7 +1,15 @@
+import { z } from "zod";
 import { AppError } from "@/lib/errors";
-import { ok, rateLimitOrThrow, route } from "@/lib/http";
+import { ok, rateLimitOrThrow, readQuery, route } from "@/lib/http";
 import { places } from "@/lib/container";
 import { inIndia } from "@/lib/places";
+import { LANGS } from "@/lib/types";
+
+const PositionQuery = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lon: z.coerce.number().min(-180).max(180),
+  lang: z.enum(LANGS).catch("en"),
+});
 
 /**
  * Turns coordinates into a place name ("Raisina Hill, New Delhi") so "Use my location" can show
@@ -9,12 +17,10 @@ import { inIndia } from "@/lib/places";
  * identifies the user.
  */
 export const GET = route("reverse", async (req) => {
-  await rateLimitOrThrow(req, "rev", 30);
-  const sp = new URL(req.url).searchParams;
-  const lat = Number(sp.get("lat"));
-  const lon = Number(sp.get("lon"));
-  if (!sp.get("lat") || !sp.get("lon") || !inIndia(lat, lon)) throw new AppError("outside_india");
-  const place = await places.reverse(lat, lon, sp.get("lang") === "hi" ? "hi" : "en");
+  await rateLimitOrThrow(req, "reverse");
+  const { lat, lon, lang } = readQuery(req, PositionQuery);
+  if (!inIndia(lat, lon)) throw new AppError("outside_india");
+  const place = await places.reverse(lat, lon, lang);
   if (!place) throw new AppError("not_found");
   return ok({ place });
 });
