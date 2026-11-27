@@ -1,8 +1,8 @@
 "use client";
 
-import { useId, type CSSProperties } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import { UI } from "@/lib/i18n";
-import type { Profile } from "@/lib/types";
+import { PROFILE_LIMITS, type Profile } from "@/lib/types";
 import Icon, { type IconName } from "./Icon";
 import { COOKING_ICON, HEATING_ICON, MODE_ICON, WINDOW_ICON } from "./iconMaps";
 
@@ -12,8 +12,7 @@ interface Props {
   canSubmit: boolean;
   /** true when the form is editing an existing plan, so it can offer Cancel */
   editing: boolean;
-  onChange: (p: Profile) => void;
-  onSubmit: () => void;
+  onSubmit: (p: Profile) => void;
   onCancel: () => void;
 }
 
@@ -142,9 +141,13 @@ function Slider({
   );
 }
 
-export default function ProfileForm({ profile: p, busy, canSubmit, editing, onChange, onSubmit, onCancel }: Props) {
+type HouseholdEdits = Partial<Omit<Profile, "lang" | "lat" | "lon" | "place">>;
+
+export default function ProfileForm({ profile, busy, canSubmit, editing, onSubmit, onCancel }: Props) {
+  const [edits, setEdits] = useState<HouseholdEdits>({});
+  const p = { ...profile, ...edits };
   const t = UI[p.lang];
-  const set = (patch: Partial<Profile>) => onChange({ ...p, ...patch });
+  const set = (patch: HouseholdEdits) => setEdits((prev) => ({ ...prev, ...patch }));
   const hh = (patch: Partial<Profile["household"]>) => set({ household: { ...p.household, ...patch } });
 
   return (
@@ -153,7 +156,7 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
       aria-labelledby="tailor-title"
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit();
+        onSubmit(p);
       }}
     >
       <header className="tailor__head">
@@ -169,22 +172,19 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
               <Stepper
                 label={t.adults}
                 value={p.household.adults}
-                min={1}
-                max={12}
+                {...PROFILE_LIMITS.adults}
                 onChange={(n) => hh({ adults: n })}
               />
               <Stepper
                 label={t.children}
                 value={p.household.children}
-                min={0}
-                max={12}
+                {...PROFILE_LIMITS.children}
                 onChange={(n) => hh({ children: n })}
               />
               <Stepper
                 label={t.elders}
                 value={p.household.elders}
-                min={0}
-                max={12}
+                {...PROFILE_LIMITS.elders}
                 onChange={(n) => hh({ elders: n })}
               />
             </div>
@@ -217,8 +217,7 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
               label={t.km}
               unit={t.units.km}
               value={p.commute.km}
-              min={0}
-              max={100}
+              {...PROFILE_LIMITS.commuteKm}
               onChange={(n) => set({ commute: { ...p.commute, km: n } })}
             />
           )}
@@ -269,8 +268,7 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
                   label={t.minutes}
                   unit={t.units.min}
                   value={p.exercise.minutes}
-                  min={0}
-                  max={180}
+                  {...PROFILE_LIMITS.exerciseMinutes}
                   step={5}
                   onChange={(n) => set({ exercise: { ...p.exercise, minutes: n } })}
                 />
@@ -290,7 +288,7 @@ export default function ProfileForm({ profile: p, busy, canSubmit, editing, onCh
             {t.cancel}
           </button>
         ) : (
-          <button type="button" className="linkish" onClick={onSubmit} disabled={busy || !canSubmit}>
+          <button type="button" className="linkish" onClick={() => onSubmit(profile)} disabled={busy || !canSubmit}>
             {t.useTypical}
           </button>
         )}

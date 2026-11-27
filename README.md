@@ -24,7 +24,7 @@ Built with Google Antigravity.
 - Breathing rates, purifier and mask effectiveness, indoor/outdoor ratios and emission factors are rounded published ranges, labelled as estimates in the UI. Wood and dung burning figures are indicative.
 - A station reading is trusted only if it is recent (OpenAQ under 3 hours, WAQI under 6 hours) and near (25 km and 40 km). Beyond that the model is used.
 - Household answers are coarse flags, not medical records. The app is not medical advice.
-- Nothing is stored on the server. Profile and progress stay in the browser.
+- The saved household profile and progress log stay in the browser. The server temporarily caches air readings and model replies. When configured, Redis stores rate-limit counters.
 
 ## What it does
 
@@ -68,7 +68,7 @@ Exposure maths: `inhaled µg = PM2.5 (µg/m³) × breathing volume (m³/h) × ho
 npm install
 cp .env.example .env.local   # optional: add OPENAI_API_KEY or GEMINI_API_KEY
 npm run dev                  # http://localhost:3000
-npm run check                # format check + lint + typecheck + 176 tests
+npm run check                # formatting, lint, TypeScript and the full test suite
 npm run format               # apply Prettier formatting
 npm run build
 ```
@@ -109,7 +109,7 @@ All configuration is read and validated in `src/lib/env.ts`; an invalid value is
 
 ## Testing
 
-159 tests (Vitest) cover the AQI maths and breakpoints, exposure and impact calculations, plan logic for different households, English and Hindi output, the API routes (validation, size limits, rate limiting, upstream failure, coordinate rounding), the AI layer for both OpenAI and Gemini (provider choice, request format, schema validation, invented-number guard, prompt-injection framing, no coordinates sent, fallbacks), the station-data sources (OpenAQ freshness, units, plausibility, median, low-cost vs reference, uncertainty flag; WAQI conversion; source priority and fallbacks), local storage handling, the shared infrastructure (cache, rate limiter, config, request helpers, Hindi and English time formatting) and server-rendered components (chart labels, totals, form inputs, no English left in Hindi views). The AI providers and data sources are mocked, so the suite runs offline.
+The Vitest suite covers the AQI maths and breakpoints, exposure and impact calculations, plan logic for different households, English and Hindi output, the API routes (validation, size limits, rate limiting, upstream failure, coordinate rounding), the AI layer for both OpenAI and Gemini (provider choice, request format, schema validation, invented-number guard, prompt-injection framing, no coordinates sent, fallbacks), the station-data sources (OpenAQ freshness, units, plausibility, median, low-cost vs reference, uncertainty flag; WAQI conversion; source priority and fallbacks), local storage handling, the shared infrastructure (cache, rate limiter, config, request helpers, Hindi and English time formatting) and server-rendered components (chart labels, totals, form inputs, no English left in Hindi views). Interaction tests also exercise household edits, cancellation, submission and retry through the rendered form. The AI providers and data sources are mocked, so the suite runs offline.
 
 ## Accessibility
 

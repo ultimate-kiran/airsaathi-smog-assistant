@@ -24,6 +24,7 @@ export function usePlan() {
     async function run(profile: Profile, attempt = 0): Promise<boolean> {
       if (!profile.place) return false;
       const signal = startRequest();
+      if (attempt === 0) setPlan(null);
       setStatus("loading");
       setError(null);
       let base: PlanView;

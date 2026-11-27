@@ -13,22 +13,32 @@ export type CookingFuel = (typeof COOKING_FUELS)[number];
 export type HeatingType = (typeof HEATING_TYPES)[number];
 export type WindowHabit = (typeof WINDOW_HABITS)[number];
 
+export const PROFILE_LIMITS = {
+  adults: { min: 1, max: 12 },
+  children: { min: 0, max: 12 },
+  elders: { min: 0, max: 12 },
+  commuteKm: { min: 0, max: 100 },
+  exerciseMinutes: { min: 0, max: 180 },
+} as const;
+
+const boundedNumber = ({ min, max }: { min: number; max: number }) => z.number().min(min).max(max);
+
 export const ProfileSchema = z.object({
   lat: z.number().min(-90).max(90),
   lon: z.number().min(-180).max(180),
   place: z.string().trim().min(1).max(80),
   lang: z.enum(["en", "hi"]).default("en"),
   household: z.object({
-    adults: z.number().int().min(1).max(12),
-    children: z.number().int().min(0).max(12),
-    elders: z.number().int().min(0).max(12),
+    adults: boundedNumber(PROFILE_LIMITS.adults).int(),
+    children: boundedNumber(PROFILE_LIMITS.children).int(),
+    elders: boundedNumber(PROFILE_LIMITS.elders).int(),
     respiratory: z.boolean(),
     heart: z.boolean(),
     pregnant: z.boolean(),
   }),
   commute: z.object({
     mode: z.enum(COMMUTE_MODES),
-    km: z.number().min(0).max(100),
+    km: boundedNumber(PROFILE_LIMITS.commuteKm),
   }),
   cooking: z.enum(COOKING_FUELS),
   heating: z.enum(HEATING_TYPES),
@@ -36,7 +46,7 @@ export const ProfileSchema = z.object({
   windows: z.enum(WINDOW_HABITS),
   exercise: z.object({
     outdoor: z.boolean(),
-    minutes: z.number().min(0).max(180),
+    minutes: boundedNumber(PROFILE_LIMITS.exerciseMinutes),
   }),
 });
 export type Profile = z.infer<typeof ProfileSchema>;

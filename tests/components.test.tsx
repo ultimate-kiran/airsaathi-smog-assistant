@@ -30,7 +30,12 @@ describe("HourStrip", () => {
 describe("Actions", () => {
   it("shows the commute alternatives with the pick-one note, and totals", () => {
     const html = renderToStaticMarkup(
-      <Actions plan={planFor({ ...PROFILE, commute: { mode: "car", km: 15 } })} lang="en" doneIds={new Set()} onToggle={noop} />,
+      <Actions
+        plan={planFor({ ...PROFILE, commute: { mode: "car", km: 15 } })}
+        lang="en"
+        doneIds={new Set()}
+        onToggle={noop}
+      />,
     );
     expect(html).toContain("Start here");
     expect(html).toContain("Pick one of these ways to commute.");
@@ -61,7 +66,7 @@ describe("Summary and ProfileForm", () => {
 
   it("renders real radio inputs with the current answer checked", () => {
     const html = renderToStaticMarkup(
-      <ProfileForm profile={PROFILE} busy={false} canSubmit editing={false} onChange={noop} onSubmit={noop} onCancel={noop} />,
+      <ProfileForm profile={PROFILE} busy={false} canSubmit editing={false} onSubmit={noop} onCancel={noop} />,
     );
     expect((html.match(/type="radio"/g) ?? []).length).toBe(6 + 4 + 3 + 2);
     expect(html).toMatch(/type="radio"[^>]*checked=""/);

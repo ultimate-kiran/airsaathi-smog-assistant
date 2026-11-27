@@ -49,5 +49,6 @@ desktop.ini
 # local AI tooling and scratch files
 .claude
 graphify-out
+graphify-out-new
 scratch
 *.local

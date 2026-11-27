@@ -61,28 +61,26 @@ export default function App() {
     void load(saved);
   }, [load]);
 
-  const update = (p: Profile) => {
-    setProfile(p);
-    saveProfile(p);
-  };
-
-  const pick = (place: Place) => {
-    const next = { ...profile, lat: place.lat, lon: place.lon, place: place.short };
-    update(next);
-    void load(next);
-  };
-
-  const setLang = (lang: Lang) => {
-    if (lang === profile.lang) return;
-    const next = { ...profile, lang };
-    update(next);
+  function changeContext(next: Profile) {
+    setProfile(next);
+    if (tailored) saveProfile(next);
     if (next.place) void load(next);
-  };
+  }
 
-  async function build() {
+  function pick(place: Place) {
+    changeContext({ ...profile, lat: place.lat, lon: place.lon, place: place.short });
+  }
+
+  function setLang(lang: Lang) {
+    if (lang !== profile.lang) changeContext({ ...profile, lang });
+  }
+
+  async function build(next: Profile) {
+    setProfile(next);
+    saveProfile(next);
     setTailored(true);
     setEditing(false);
-    if (await load(profile)) revealPlan();
+    if (await load(next)) revealPlan();
   }
 
   const lang = profile.lang;
@@ -128,8 +126,7 @@ export default function App() {
               busy={status === "loading"}
               canSubmit={!!profile.place}
               editing={tailored}
-              onChange={update}
-              onSubmit={() => void build()}
+              onSubmit={build}
               onCancel={() => setEditing(false)}
             />
           )}
