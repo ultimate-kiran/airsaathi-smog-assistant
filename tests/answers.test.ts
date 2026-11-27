@@ -38,3 +38,47 @@ describe("ruleAnswer", () => {
     expect(ruleAnswer("What about tomorrow?", plan, "en").startsWith(plan.actions[0].title)).toBe(true);
   });
 });
+
+describe("ruleAnswer general advice, when today's plan has no matching step", () => {
+  const base = buildPlan(PROFILE, snapshotFromOpenMeteo(openMeteoPayload(140, 200)));
+  const noSteps = { ...base, actions: [], bestWindow: null };
+  const QUESTIONS: [topic: string, en: string, hi: string][] = [
+    ["masks", "Which N95 should I buy?", "कौन सा मास्क लें?"],
+    ["children", "Can the kids play outside?", "क्या बच्चे बाहर खेल सकते हैं?"],
+    ["exercise", "Should I go for a run?", "क्या सुबह की सैर ठीक है?"],
+    ["windows", "Can I open the windows?", "क्या खिड़की खोलूँ?"],
+    ["purifiers", "Is a HEPA purifier worth it?", "क्या प्यूरीफ़ायर लें?"],
+    ["cooking", "Is cooking on gas a problem?", "रसोई में धुआँ कैसे कम करें?"],
+    ["heating", "Can we light a coal fire?", "क्या अँगीठी जलाएँ?"],
+    ["health", "My father has asthma, what now?", "दमा वाले क्या करें?"],
+    ["commuting", "Should I take the metro to the office?", "क्या मेट्रो से दफ़्तर जाऊँ?"],
+  ];
+
+  it.each(QUESTIONS)("answers a %s question with that topic's advice in both languages", (_topic, en, hi) => {
+    for (const [question, lang] of [
+      [en, "en"],
+      [hi, "hi"],
+    ] as const) {
+      const answer = ruleAnswer(question, noSteps, lang);
+      expect(answer).not.toBe(ruleAnswer("What about tomorrow?", noSteps, lang));
+      expect(/[ऀ-ॿ]/.test(answer)).toBe(lang === "hi");
+    }
+  });
+
+  it("gives every topic its own answer", () => {
+    const answers = QUESTIONS.map(([, en]) => ruleAnswer(en, noSteps, "en"));
+    expect(new Set(answers).size).toBe(QUESTIONS.length);
+  });
+
+  it("adds the cleanest hours only when there are some", () => {
+    expect(ruleAnswer("Can I open the windows?", base, "en")).toContain("The cleanest hours today are");
+    expect(ruleAnswer("Can I open the windows?", noSteps, "en")).not.toContain("cleanest hours");
+  });
+
+  it("falls back to a calm general answer when there is neither a topic nor a step", () => {
+    expect(ruleAnswer("What about tomorrow?", noSteps, "en")).toBe(
+      "The air looks fine today, so normal routines are fine.",
+    );
+    expect(ruleAnswer("कल क्या?", noSteps, "hi")).toMatch(/^आज हवा ठीक है/);
+  });
+});

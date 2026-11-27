@@ -1,29 +1,17 @@
 // @vitest-environment jsdom
-import { act, createElement } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import { beforeEach, expect, it, vi } from "vitest";
 import App from "../src/components/App";
 import { snapshotFromOpenMeteo } from "../src/lib/airdata";
 import { api } from "../src/lib/client/api";
 import { buildPlan } from "../src/lib/engine";
 import { loadProfile, saveProfile } from "../src/lib/storage";
+import { click, mount, setupDom } from "./dom";
 import { openMeteoPayload, PROFILE } from "./helpers";
 
-let root: Root;
-async function click(label: string) {
-  const button = Array.from(document.querySelectorAll("button")).find(
-    (b) => (b.getAttribute("aria-label") ?? b.textContent?.trim()) === label,
-  );
-  if (!button) throw new Error(`Missing button: ${label}`);
-  await act(async () => button.click());
-}
+setupDom();
 
 beforeEach(() => {
-  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  vi.stubGlobal("requestAnimationFrame", () => 0);
-  localStorage.clear();
-  document.body.replaceChildren();
-  root = createRoot(document.body.appendChild(document.createElement("div")));
   const air = snapshotFromOpenMeteo(openMeteoPayload());
   vi.spyOn(api, "plan").mockImplementation(async (p) => {
     const result = buildPlan(p, air);
@@ -31,15 +19,9 @@ beforeEach(() => {
   });
 });
 
-afterEach(async () => {
-  await act(async () => root.unmount());
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
-
 it("discards a cancelled edit and rebuilds the plan only for submitted changes", async () => {
   saveProfile(PROFILE);
-  await act(async () => root.render(createElement(App)));
+  await mount(createElement(App));
   await click("Change household details");
   await click("Adults: +1");
   expect(loadProfile()).toEqual(PROFILE);
@@ -59,7 +41,7 @@ it("discards a cancelled edit and rebuilds the plan only for submitted changes",
 });
 
 it("keeps first-time edits private and uses the defaults when a typical household is chosen", async () => {
-  await act(async () => root.render(createElement(App)));
+  await mount(createElement(App));
   await click("Delhi");
   await click("Adults: +1");
   expect(loadProfile()).toBeNull();
@@ -70,7 +52,7 @@ it("keeps first-time edits private and uses the defaults when a typical househol
 
 it("keeps the current place when an open draft is submitted after a location change", async () => {
   saveProfile(PROFILE);
-  await act(async () => root.render(createElement(App)));
+  await mount(createElement(App));
   await click("Change household details");
   await click("Adults: +1");
   await click("Delhi");
@@ -82,7 +64,7 @@ it("keeps the current place when an open draft is submitted after a location cha
 
 it("retries a failed update with the submitted household without showing its previous plan", async () => {
   saveProfile(PROFILE);
-  await act(async () => root.render(createElement(App)));
+  await mount(createElement(App));
   await click("Change household details");
   await click("Adults: +1");
   vi.mocked(api.plan).mockRejectedValueOnce(new Error("offline"));

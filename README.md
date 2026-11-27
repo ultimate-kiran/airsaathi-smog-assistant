@@ -68,12 +68,12 @@ Exposure maths: `inhaled µg = PM2.5 (µg/m³) × breathing volume (m³/h) × ho
 npm install
 cp .env.example .env.local   # optional: add OPENAI_API_KEY or GEMINI_API_KEY
 npm run dev                  # http://localhost:3000
-npm run check                # formatting, lint, TypeScript and the full test suite
+npm run check                # formatting, lint, TypeScript and the tests with coverage
 npm run format               # apply Prettier formatting
 npm run build
 ```
 
-The project's `.npmrc` disables dependency install scripts. GitHub Actions (`.github/workflows/ci.yml`) runs the format check, lint, typecheck, tests, build and `npm audit` on every push.
+The project's `.npmrc` disables dependency install scripts. GitHub Actions (`.github/workflows/ci.yml`) runs the format check, lint, typecheck, tests with coverage floors, build and `npm audit` on every push.
 
 Code standards are enforced, not just suggested. TypeScript runs in strict mode with unused-code and missing-return checks. ESLint fails on any warning and caps function size (80 lines), complexity (10), nesting (3) and parameters (4). It also bans nested ternaries and loose equality, and requires type-only imports. The one exception is that only `src/lib/log.ts` may write to the console. Prettier sets one format.
 
@@ -111,14 +111,18 @@ All configuration is read and validated in `src/lib/env.ts`; an invalid value is
 
 ## Testing
 
-The Vitest suite covers the AQI maths and breakpoints, exposure and impact calculations, plan logic for different households, English and Hindi output, the API routes (validation, size limits, rate limiting, upstream failure, coordinate rounding), the AI layer for both OpenAI and Gemini (provider choice, request format, schema validation, invented-number guard, prompt-injection framing, no coordinates sent, fallbacks), the station-data sources (OpenAQ freshness, units, plausibility, median, low-cost vs reference, uncertainty flag; WAQI conversion; source priority and fallbacks), local storage handling, the shared infrastructure (cache, rate limiter, config, request helpers, Hindi and English time formatting) and server-rendered components (chart labels, totals, form inputs, no English left in Hindi views). Interaction tests also exercise household edits, cancellation, submission and retry through the rendered form. The AI providers and data sources are mocked, so the suite runs offline.
+230 Vitest tests in 18 files. Coverage of `src/`: 96% of lines, 94% of statements, 93% of functions and 87% of branches. `npm run test:coverage` prints the per-file report and fails if coverage drops below the floors in `vitest.config.mts`. CI runs it on every push.
+
+The Vitest suite covers the AQI maths and breakpoints, exposure and impact calculations, plan logic for different households, English and Hindi output, the API routes (validation, size limits, rate limiting, upstream failure, coordinate rounding), the AI layer for both OpenAI and Gemini (provider choice, request format, schema validation, invented-number guard, prompt-injection framing, no coordinates sent, fallbacks), the station-data sources (OpenAQ freshness, units, plausibility, median, low-cost vs reference, uncertainty flag; WAQI conversion; source priority and fallbacks), local storage handling, the shared infrastructure (cache, rate limiter, config, request helpers, Hindi and English time formatting) and server-rendered components (chart labels, totals, form inputs, no English left in Hindi views). Interaction tests render the real components in jsdom and cover several flows: household edits, cancellation, submission and retry; the question box (answers, suggested questions, errors); copying and WhatsApp sharing; place search with its debounce; the device location (accurate fix, blocked permission, no support); the hourly chart's clean and avoid hours; the AI step (merged text, failure fallback, one reload when the reading changes); and the "I did this" log. The Content Security Policy proxy is tested for its per-request nonce, its strict script rules and the routes it covers. The AI providers and data sources are mocked, so the suite runs offline.
 
 ## Accessibility
 
-- Checked with axe-core (WCAG 2.0, 2.1, 2.2 AA and best-practice rules) on desktop, mobile and Hindi views: 0 violations.
+- Lighthouse accessibility score 100 on the live site for each screen: the first screen, the household form, and the plan in English and in Hindi (mobile).
+- `tests/a11y.test.ts` runs axe-core (WCAG 2.0, 2.1 and 2.2 A/AA and best-practice rules) on the same screens on every push, so a regression fails CI. Colour contrast is covered by Lighthouse, since the test environment has no layout engine.
+- Focus stays visible in Windows High Contrast mode: the search and question boxes add an outline that the mode paints even though it drops their shadow ring.
 - Skip link, one `main` landmark, visible focus rings, labelled form controls, live regions for loading and errors, and reduced-motion support.
 - Colour pairs were checked against WCAG AA (4.5:1 for text). Every number is also written in text, so nothing relies on colour alone.
-- English and Hindi (`lang` is set on the page and switches with the language toggle).
+- English and Hindi. The page's `lang` attribute (on `<html>`) follows the language toggle, so screen readers switch voice for the whole page.
 
 ## Limits worth knowing
 

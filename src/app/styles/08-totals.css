@@ -1,0 +1,64 @@
+/* ---------- totals band ---------- */
+.totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px 56px;
+  align-items: center;
+  padding: clamp(26px, 4vw, 46px);
+  color: #fff;
+  border-radius: 32px;
+  background:
+    radial-gradient(520px 260px at 92% 0%, rgba(111, 224, 197, 0.26), transparent 70%),
+    linear-gradient(135deg, #0a1a26, #12303b);
+}
+
+.totals h2 {
+  font-size: clamp(1.6rem, 1.1rem + 1.6vw, 2.3rem);
+  font-weight: 800;
+}
+
+.totals__copy p {
+  margin-top: 8px;
+  max-width: 46ch;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.totals__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 48px;
+  margin: 0;
+}
+
+.totals__grid dt {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.totals__grid dd {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: clamp(2.8rem, 6vw, 4.2rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+.totals__grid small {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--breath);
+}
+
+.totals__grid dd.totals__note {
+  max-width: 24ch;
+  margin-top: 4px;
+  font-family: var(--font-text);
+  font-weight: 400;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.88);
+}

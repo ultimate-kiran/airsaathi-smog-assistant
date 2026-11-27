@@ -6,8 +6,11 @@ import "./styles/02-controls.css";
 import "./styles/03-hero.css";
 import "./styles/04-page.css";
 import "./styles/05-form.css";
-import "./styles/06-plan.css";
-import "./styles/07-footer-responsive.css";
+import "./styles/06-hours.css";
+import "./styles/07-actions.css";
+import "./styles/08-totals.css";
+import "./styles/09-tools.css";
+import "./styles/10-footer-responsive.css";
 
 const display = Bricolage_Grotesque({
   subsets: ["latin"],

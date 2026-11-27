@@ -93,6 +93,8 @@
 }
 .search__field:focus-within {
   box-shadow: 0 0 0 3px var(--focus);
+  /* invisible normally; High Contrast mode drops the shadow but paints this outline */
+  outline: 3px solid transparent;
 }
 
 .search__field input {

@@ -53,6 +53,11 @@ export function useHousehold(load: LoadPlan) {
     void load(saved);
   }, [load]);
 
+  // The page language follows the chosen language, so screen readers switch voice for all of it.
+  useEffect(() => {
+    document.documentElement.lang = profile.lang;
+  }, [profile.lang]);
+
   /** A new place or language: keep the household, reload the plan. */
   function changeContext(next: Profile) {
     setProfile(next);

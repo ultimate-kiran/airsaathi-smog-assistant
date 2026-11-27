@@ -8,5 +8,12 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**"],
+      reporter: ["text-summary", "text"],
+      // CI fails if coverage drops below these floors (set a little under the current figures).
+      thresholds: { statements: 93, branches: 85, functions: 91, lines: 95 },
+    },
   },
 });

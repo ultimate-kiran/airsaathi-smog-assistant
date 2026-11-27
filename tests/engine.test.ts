@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { categoryFor, indiaAqi } from "../src/lib/aqi";
 import { snapshotFromOpenMeteo } from "../src/lib/airdata";
-import { bestWindow, buildPlan, totalsFor } from "../src/lib/engine";
+import { bestWindow, buildPlan, totalsFor, worstStretch } from "../src/lib/engine";
 import { numbersGrounded } from "../src/lib/ai";
-import { ProfileSchema, type Profile } from "../src/lib/types";
+import { ProfileSchema, type HourPoint, type Profile } from "../src/lib/types";
 import { formatRange } from "../src/lib/format";
 
 /** Two days of hourly data: dirty at night and dawn, cleanest around 2 pm. */
@@ -207,5 +207,46 @@ describe("hallucination guard", () => {
   });
   it("rejects invented large numbers", () => {
     expect(numbersGrounded("This avoids 4,800 µg of PM2.5.", ctx)).toBe(false);
+  });
+});
+
+describe("worstStretch", () => {
+  /** A day of hours starting at 6 am with the given AQI values (the rest of the day at 50). */
+  const day = (aqis: number[]): HourPoint[] =>
+    Array.from({ length: 24 }, (_, i) => ({
+      hour: (6 + i) % 24,
+      pm25: 20,
+      pm10: 40,
+      aqi: aqis[i] ?? 50,
+      category: "satisfactory",
+      isNow: i === 0,
+    }));
+
+  it("returns nothing when even the peak is under the limit", () => {
+    expect(worstStretch(day([90, 95, 99]), 100)).toBeNull();
+  });
+
+  it("picks the longest run near the peak, as clock hours with an exclusive end", () => {
+    // 8-9 am is a short spike; 1-4 pm is the longer stretch at the same level.
+    const aqis = [50, 50, 300, 300, 50, 50, 50, 300, 300, 300];
+    expect(worstStretch(day(aqis), 100)).toEqual({ start: 13, end: 16, allDay: false });
+  });
+
+  it("keeps the earlier stretch when two are equally long", () => {
+    expect(worstStretch(day([300, 300, 50, 300, 300]), 100)).toEqual({ start: 6, end: 8, allDay: false });
+  });
+
+  it("counts a stretch that runs to the end of the forecast", () => {
+    const aqis = Array.from({ length: 24 }, (_, i) => (i >= 20 ? 300 : 50));
+    expect(worstStretch(day(aqis), 100)).toEqual({ start: 2, end: 6, allDay: false });
+  });
+
+  it("flags the whole day when nearly every hour is bad", () => {
+    expect(worstStretch(day(Array(24).fill(300)), 100)?.allDay).toBe(true);
+  });
+
+  it("uses the limit as the floor when the peak is only just above it", () => {
+    // Peak 110: 85% of it is 93.5, but nothing at or below the 100 limit may count.
+    expect(worstStretch(day([95, 110, 105, 99]), 100)).toEqual({ start: 7, end: 9, allDay: false });
   });
 });
