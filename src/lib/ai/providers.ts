@@ -43,13 +43,16 @@ export function toGeminiSchema(node: unknown): unknown {
   return node;
 }
 
-async function postModelRequest(
-  provider: Provider,
-  url: string,
-  auth: Record<string, string>,
-  payload: object,
-  timeoutMs: number,
-) {
+interface ModelHttpCall {
+  provider: Provider;
+  url: string;
+  /** the provider's auth header; sent only in headers, never in the URL */
+  auth: Record<string, string>;
+  payload: object;
+  timeoutMs: number;
+}
+
+async function postModelRequest({ provider, url, auth, payload, timeoutMs }: ModelHttpCall) {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...auth },
@@ -63,26 +66,46 @@ async function postModelRequest(
   return response.json();
 }
 
+function geminiPayload(r: ModelRequest) {
+  return {
+    systemInstruction: { parts: [{ text: r.system }] },
+    contents: [{ role: "user", parts: [{ text: r.user }] }],
+    generationConfig: {
+      temperature: r.temperature,
+      maxOutputTokens: r.maxTokens,
+      ...(r.schema ? { responseMimeType: "application/json", responseSchema: toGeminiSchema(r.schema) } : {}),
+    },
+  };
+}
+
+function openAiPayload(r: ModelRequest, model: string) {
+  return {
+    model,
+    messages: [
+      { role: "system", content: r.system },
+      { role: "user", content: r.user },
+    ],
+    max_completion_tokens: r.maxTokens,
+    // Reasoning models reject a custom temperature, so only send it to the GPT-4 family.
+    ...(/^gpt-4/.test(model) ? { temperature: r.temperature } : {}),
+    ...(r.schema
+      ? { response_format: { type: "json_schema", json_schema: { name: "briefing", strict: true, schema: r.schema } } }
+      : {}),
+  };
+}
+
 const PROVIDERS: Record<Provider, ModelClient> = {
   gemini: {
     defaultModel: "gemini-flash-latest",
     keyOf: (e) => ({ key: e.GEMINI_API_KEY, model: e.GEMINI_MODEL }),
     async call(r, cfg) {
-      const data = await postModelRequest(
-        cfg.provider,
-        `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent`,
-        { "x-goog-api-key": cfg.key },
-        {
-          systemInstruction: { parts: [{ text: r.system }] },
-          contents: [{ role: "user", parts: [{ text: r.user }] }],
-          generationConfig: {
-            temperature: r.temperature,
-            maxOutputTokens: r.maxTokens,
-            ...(r.schema ? { responseMimeType: "application/json", responseSchema: toGeminiSchema(r.schema) } : {}),
-          },
-        },
-        r.timeoutMs,
-      );
+      const data = await postModelRequest({
+        provider: cfg.provider,
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent`,
+        auth: { "x-goog-api-key": cfg.key },
+        payload: geminiPayload(r),
+        timeoutMs: r.timeoutMs,
+      });
       return data?.candidates?.[0]?.content?.parts?.map((x: { text?: string }) => x.text ?? "").join("") ?? null;
     },
   },
@@ -90,30 +113,13 @@ const PROVIDERS: Record<Provider, ModelClient> = {
     defaultModel: "gpt-4.1-mini",
     keyOf: (e) => ({ key: e.OPENAI_API_KEY, model: e.OPENAI_MODEL }),
     async call(r, cfg) {
-      const data = await postModelRequest(
-        cfg.provider,
-        "https://api.openai.com/v1/chat/completions",
-        { Authorization: `Bearer ${cfg.key}` },
-        {
-          model: cfg.model,
-          messages: [
-            { role: "system", content: r.system },
-            { role: "user", content: r.user },
-          ],
-          max_completion_tokens: r.maxTokens,
-          // Reasoning models reject a custom temperature, so only send it to the GPT-4 family.
-          ...(/^gpt-4/.test(cfg.model) ? { temperature: r.temperature } : {}),
-          ...(r.schema
-            ? {
-                response_format: {
-                  type: "json_schema",
-                  json_schema: { name: "briefing", strict: true, schema: r.schema },
-                },
-              }
-            : {}),
-        },
-        r.timeoutMs,
-      );
+      const data = await postModelRequest({
+        provider: cfg.provider,
+        url: "https://api.openai.com/v1/chat/completions",
+        auth: { Authorization: `Bearer ${cfg.key}` },
+        payload: openAiPayload(r, cfg.model),
+        timeoutMs: r.timeoutMs,
+      });
       const msg = data?.choices?.[0]?.message;
       if (!msg || msg.refusal) return null;
       return typeof msg.content === "string" ? msg.content : null;

@@ -1,4 +1,4 @@
-import { toCigarettes } from "@/lib/aqi";
+import { showsCigarettes, toCigarettes } from "@/lib/aqi";
 import { formatInt, round1 } from "@/lib/format";
 import { UI } from "@/lib/i18n";
 import { lastNDays, localDate, streak, type DoneLog } from "@/lib/storage";
@@ -31,7 +31,7 @@ export default function Tracker({ log, lang }: { log: DoneLog; lang: Lang }) {
                 {formatInt(ugToday)}
                 <small> µg PM2.5</small>
               </dd>
-              {cig >= 0.1 && <p className="muted">{t.cigEq(cig)}</p>}
+              {showsCigarettes(cig) && <p className="muted">{t.cigEq(cig)}</p>}
             </div>
             <div>
               <dt>CO₂</dt>

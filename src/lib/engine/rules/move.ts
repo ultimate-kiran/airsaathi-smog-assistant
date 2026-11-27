@@ -48,15 +48,17 @@ export const carpool: Rule = (c) => {
   });
 };
 
+/** Round-trip time spent breathing street air, for the modes where a mask helps. */
+function hoursOutdoors(mode: "bike" | "walk" | "bus", km: number): number {
+  if (mode === "bike") return (2 * km) / TIME.BIKE_KMH;
+  if (mode === "walk") return Math.min((2 * km) / TIME.WALK_KMH, TIME.WALK_MAX_H);
+  return TIME.BUS_EXPOSED_H;
+}
+
 export const commuteMask: Rule = (c) => {
   const { mode, km } = c.p.commute;
   if (!(mode === "bike" || mode === "walk" || mode === "bus") || c.aqi < AQI.MASK_FROM) return null;
-  const hoursOut =
-    mode === "bike"
-      ? (2 * km) / TIME.BIKE_KMH
-      : mode === "walk"
-        ? Math.min((2 * km) / TIME.WALK_KMH, TIME.WALK_MAX_H)
-        : TIME.BUS_EXPOSED_H;
+  const hoursOut = hoursOutdoors(mode, km);
   const vent = mode === "bike" ? K.VENT.light : K.VENT.walk;
   const avoided = c.avg.rush * vent * hoursOut * K.MASK_EFFECT;
   if (avoided < TRIP.MIN_MASK_UG) return null;

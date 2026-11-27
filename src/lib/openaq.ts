@@ -85,8 +85,7 @@ function freshest(loc: OpenAqLocation, latest: OpenAqLatest, param: string, now:
 export function toCandidate(
   loc: OpenAqLocation,
   latest: unknown,
-  lat: number,
-  lon: number,
+  from: { lat: number; lon: number },
   now = new Date(),
 ): OpenAqCandidate | null {
   const r = LatestSchema.safeParse(latest);
@@ -96,7 +95,7 @@ export function toCandidate(
   const pm10 = freshest(loc, r.data.results, "pm10", now);
   return {
     name: (loc.name ?? "Station").trim().slice(0, 80) || "Station",
-    km: Math.round(haversineKm(lat, lon, loc.coordinates.latitude, loc.coordinates.longitude)),
+    km: Math.round(haversineKm(from.lat, from.lon, loc.coordinates.latitude, loc.coordinates.longitude)),
     monitor: loc.isMonitor === true,
     pm25: pm25.value,
     pm10: pm10?.value ?? null,
@@ -154,7 +153,7 @@ export async function fetchOpenAq(lat: number, lon: number): Promise<StationRead
     const cands: OpenAqCandidate[] = [];
     settled.forEach((s, i) => {
       if (s.status !== "fulfilled") return;
-      const c = toCandidate(locs[i], s.value, lat, lon);
+      const c = toCandidate(locs[i], s.value, { lat, lon });
       if (c) cands.push(c);
     });
     return aggregate(cands);

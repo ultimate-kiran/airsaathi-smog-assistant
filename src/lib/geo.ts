@@ -19,6 +19,9 @@ export interface Fix {
 
 export type GeoFailure = "unsupported" | "denied" | "unavailable" | "timeout";
 
+/** GeolocationPositionError codes: 1 PERMISSION_DENIED, 2 POSITION_UNAVAILABLE, 3 TIMEOUT. */
+const FAILURE_BY_CODE: Partial<Record<number, GeoFailure>> = { 1: "denied", 2: "unavailable", 3: "timeout" };
+
 export class GeoError extends Error {
   constructor(public readonly kind: GeoFailure) {
     super(kind);
@@ -84,7 +87,7 @@ export function locate(geo: GeoLike | undefined, opts: LocateOptions = {}): Prom
         // handed over) and the watch keeps going: keep waiting for a better fix instead of
         // giving up early. The settle timer decides when to stop.
         if (s.best) return;
-        fail(e.code === 1 ? "denied" : e.code === 2 ? "unavailable" : "timeout");
+        fail(FAILURE_BY_CODE[e.code] ?? "timeout");
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: timeoutMs },
     );

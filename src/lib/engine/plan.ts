@@ -1,7 +1,7 @@
 import type { AirSnapshot } from "../airdata";
 import { categoryFor, cigarettesForDay, toCigarettes } from "../aqi";
 import { formatRange, round1 } from "../format";
-import type { ActionOut, Lang, PlanResponse, PlanText, Profile } from "../types";
+import type { ActionOut, PlanResponse, PlanText, Profile } from "../types";
 import { buildContext, type Ctx } from "./context";
 import type { Rule } from "./rule";
 import { RULES } from "./rules";
@@ -40,13 +40,10 @@ function sumCounted(actions: ActionOut[]): PlanResponse["totals"] {
 }
 
 /** The headline and summary shown when AI is off or its answer was rejected. */
-export function ruleSummary(
-  place: string,
-  lang: Lang,
-  aqi: number,
-  best: PlanResponse["bestWindow"],
-  top?: ActionOut,
-): PlanText {
+export function ruleSummary(plan: Omit<PlanResponse, "ai">): PlanText {
+  const { place, lang, bestWindow: best } = plan;
+  const aqi = plan.aqi.value;
+  const top = plan.actions[0];
   const cat = categoryFor(aqi).label;
   const headline =
     lang === "hi"
@@ -69,7 +66,7 @@ export function buildPlan(p: Profile, air: AirSnapshot): PlanResponse {
   const actions = planActions(c);
   const best = c.bestHour ? { start: c.bestHour.start, end: c.bestHour.end, aqi: c.bestHour.aqi } : null;
   const cur = air.current;
-  return {
+  const base: Omit<PlanResponse, "ai"> = {
     place: p.place,
     lang: p.lang,
     fetchedAt: air.fetchedAt,
@@ -81,6 +78,6 @@ export function buildPlan(p: Profile, air: AirSnapshot): PlanResponse {
     avoid: worstStretch(air.hours, c.limits.vulnerable),
     actions,
     totals: sumCounted(actions),
-    ai: ruleSummary(p.place, p.lang, cur.aqi, best, actions[0]),
   };
+  return { ...base, ai: ruleSummary(base) };
 }

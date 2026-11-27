@@ -87,14 +87,15 @@ const TOPICS: Topic[] = [
   },
 ];
 
+const WINDOW_LINE: Record<Lang, (range: string) => string> = {
+  en: (range) => ` The cleanest hours today are ${range}.`,
+  hi: (range) => ` सबसे साफ़ समय ${range} है।`,
+};
+
 export function ruleAnswer(question: string, plan: PlanResponse, lang: Lang): string {
   const topic = TOPICS.find((t) => t.words.test(question));
   const window = plan.bestWindow ? formatRange(plan.bestWindow, lang) : null;
-  const windowLine = window
-    ? lang === "hi"
-      ? ` सबसे साफ़ समय ${window} है।`
-      : ` The cleanest hours today are ${window}.`
-    : "";
+  const windowLine = window ? WINDOW_LINE[lang](window) : "";
 
   if (topic) {
     const action = plan.actions.find((a) => topic.ids.includes(a.id));

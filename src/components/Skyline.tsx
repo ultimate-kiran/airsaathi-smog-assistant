@@ -19,30 +19,44 @@ interface Block {
   lights: [number, number][];
 }
 
-function layer(seed: number, minH: number, maxH: number, minW: number, maxW: number, lit: number): Block[] {
+interface LayerSpec {
+  seed: number;
+  /** building height range, px */
+  height: [number, number];
+  /** building width range, px */
+  width: [number, number];
+  /** chance that each window is lit, 0 to 1 */
+  lit: number;
+}
+
+/** Lit windows on a grid inside one building. Draws from `rnd` in a fixed order, so layouts are stable. */
+function litWindows(rnd: () => number, w: number, h: number, lit: number): [number, number][] {
+  const lights: [number, number][] = [];
+  if (lit <= 0) return lights;
+  for (let wy = 14; wy < h - 10; wy += 16) {
+    for (let wx = 8; wx < w - 12; wx += 14) {
+      if (rnd() < lit) lights.push([wx, wy]);
+    }
+  }
+  return lights;
+}
+
+function layer({ seed, height: [minH, maxH], width: [minW, maxW], lit }: LayerSpec): Block[] {
   const rnd = seeded(seed);
   const blocks: Block[] = [];
   let x = -20;
   while (x < 1220) {
     const w = minW + rnd() * (maxW - minW);
     const h = minH + rnd() * (maxH - minH);
-    const lights: [number, number][] = [];
-    if (lit > 0) {
-      for (let wy = 14; wy < h - 10; wy += 16) {
-        for (let wx = 8; wx < w - 12; wx += 14) {
-          if (rnd() < lit) lights.push([wx, wy]);
-        }
-      }
-    }
-    blocks.push({ x, w: w + 1, h, lights });
+    blocks.push({ x, w: w + 1, h, lights: litWindows(rnd, w, h, lit) });
     x += w;
   }
   return blocks;
 }
 
-const FAR = layer(11, 50, 120, 30, 70, 0);
-const MID = layer(23, 70, 170, 36, 80, 0.07);
-const NEAR = layer(37, 90, 200, 44, 96, 0.16);
+const FAR = layer({ seed: 11, height: [50, 120], width: [30, 70], lit: 0 });
+const MID = layer({ seed: 23, height: [70, 170], width: [36, 80], lit: 0.07 });
+const NEAR = layer({ seed: 37, height: [90, 200], width: [44, 96], lit: 0.16 });
 const H = 260;
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));

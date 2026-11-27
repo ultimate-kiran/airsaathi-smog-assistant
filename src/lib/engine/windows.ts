@@ -36,22 +36,33 @@ export function bestWindow(hours: HourPoint[], len: number): Window | null {
   return best;
 }
 
+/** Hours within this share of the day's peak count as part of the bad stretch. */
+const NEAR_PEAK = 0.85;
+/** A stretch this long covers practically the whole forecast day. */
+const ALL_DAY_HOURS = 22;
+
+/** The longest run of consecutive `true` values, as [start, end) indices. */
+function longestRun(flags: boolean[]): [number, number] | null {
+  let best: [number, number] | null = null;
+  let start = -1;
+  for (let i = 0; i <= flags.length; i++) {
+    const hit = i < flags.length && flags[i];
+    if (hit && start < 0) start = i;
+    if (!hit && start >= 0) {
+      if (!best || i - start > best[1] - best[0]) best = [start, i];
+      start = -1;
+    }
+  }
+  return best;
+}
+
 /** Longest stretch near the day's peak, if the peak is above `limit`. */
 export function worstStretch(hours: HourPoint[], limit: number): PlanResponse["avoid"] {
   const maxAqi = Math.max(...hours.map((h) => h.aqi));
   if (maxAqi <= limit) return null;
-  const threshold = Math.max(limit, 0.85 * maxAqi);
-  let bestRun: [number, number] | null = null;
-  let runStart = -1;
-  for (let i = 0; i <= hours.length; i++) {
-    const hit = i < hours.length && hours[i].aqi >= threshold;
-    if (hit && runStart < 0) runStart = i;
-    if (!hit && runStart >= 0) {
-      if (!bestRun || i - runStart > bestRun[1] - bestRun[0]) bestRun = [runStart, i];
-      runStart = -1;
-    }
-  }
-  if (!bestRun) return null;
-  const [a, b] = bestRun;
-  return { start: hours[a].hour, end: (hours[b - 1].hour + 1) % 24, allDay: b - a >= 22 };
+  const threshold = Math.max(limit, NEAR_PEAK * maxAqi);
+  const run = longestRun(hours.map((h) => h.aqi >= threshold));
+  if (!run) return null;
+  const [a, b] = run;
+  return { start: hours[a].hour, end: (hours[b - 1].hour + 1) % 24, allDay: b - a >= ALL_DAY_HOURS };
 }

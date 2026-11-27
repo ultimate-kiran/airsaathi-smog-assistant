@@ -105,5 +105,8 @@ export const INHALED_UG_PER_CIGARETTE = 330;
 /** Avoided (or inhaled) PM2.5 dose expressed as cigarettes. */
 export const toCigarettes = (inhaledUg: number) => round1(inhaledUg / INHALED_UG_PER_CIGARETTE);
 
+/** Below this a cigarette comparison rounds to nothing useful, so the UI leaves it out. */
+export const showsCigarettes = (cigarettes: number) => cigarettes >= 0.1;
+
 /** A day spent breathing this 24-hour average concentration, as cigarettes. */
 export const cigarettesForDay = (avgPm25: number) => round1(avgPm25 / UG_PER_CIGARETTE_DAY);

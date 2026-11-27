@@ -20,10 +20,17 @@ export type Address = z.infer<typeof AddressSchema>;
 const unique = (list: (string | undefined)[]): string[] =>
   list.filter((p, i, all): p is string => !!p && all.indexOf(p) === i);
 
+/** Address fields for the local area and for the town, most specific first. */
+const AREA_KEYS = ["suburb", "neighbourhood", "quarter", "city_district"] as const;
+const TOWN_KEYS = ["city", "town", "village", "municipality", "county", "state_district"] as const;
+
+const firstOf = (a: Address, keys: readonly (keyof Address)[]): string | undefined =>
+  keys.map((k) => a[k]).find((v) => v !== undefined);
+
 /** "Raisina Hill, New Delhi" (short) and "Raisina Hill, New Delhi, Delhi" (full), or null with no usable name. */
 export function placeName(a: Address): { name: string; short: string } | null {
-  const area = a.suburb ?? a.neighbourhood ?? a.quarter ?? a.city_district;
-  const town = a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? a.state_district;
+  const area = firstOf(a, AREA_KEYS);
+  const town = firstOf(a, TOWN_KEYS);
   const parts = unique([area, town]);
   if (parts.length === 0 && a.state) parts.push(a.state);
   if (parts.length === 0) return null;

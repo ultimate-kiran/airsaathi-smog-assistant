@@ -17,16 +17,19 @@ function indicesIn(hours: HourPoint[], range: HourRange): Set<number> {
   return out;
 }
 
+/** Hours to mark as "avoid": none, the whole day, or one stretch. */
+function avoidIndices(hours: HourPoint[], avoid: PlanResponse["avoid"]): Set<number> {
+  if (!avoid) return new Set();
+  if (avoid.allDay) return new Set(hours.map((_, i) => i));
+  return indicesIn(hours, avoid);
+}
+
 export default function HourStrip({ plan, lang }: { plan: PlanResponse; lang: Lang }) {
   const t = UI[lang];
   const { hours, bestWindow, avoid } = plan;
   // Scale to the day's own peak (never below 100) so a clean day still shows its shape.
   const top = Math.max(100, ...hours.map((h) => h.aqi));
-  const avoidSet = avoid
-    ? avoid.allDay
-      ? new Set(hours.map((_, i) => i))
-      : indicesIn(hours, avoid)
-    : new Set<number>();
+  const avoidSet = avoidIndices(hours, avoid);
   const bestIdx = bestWindow ? hours.findIndex((h) => h.hour === bestWindow.start) : -1;
 
   return (

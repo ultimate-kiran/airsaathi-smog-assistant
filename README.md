@@ -73,7 +73,9 @@ npm run format               # apply Prettier formatting
 npm run build
 ```
 
-The project's `.npmrc` disables dependency install scripts. GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, tests, build and `npm audit` on every push.
+The project's `.npmrc` disables dependency install scripts. GitHub Actions (`.github/workflows/ci.yml`) runs the format check, lint, typecheck, tests, build and `npm audit` on every push.
+
+Code standards are enforced, not just suggested. TypeScript runs in strict mode with unused-code and missing-return checks. ESLint fails on any warning and caps function size (80 lines), complexity (10), nesting (3) and parameters (4). It also bans nested ternaries and loose equality, and requires type-only imports. The one exception is that only `src/lib/log.ts` may write to the console. Prettier sets one format.
 
 ### Environment
 

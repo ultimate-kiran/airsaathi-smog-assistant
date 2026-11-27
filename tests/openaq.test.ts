@@ -85,16 +85,16 @@ describe("toCandidate", () => {
   const parsed = pickLocations(locations(l), KOCHI.lat, KOCHI.lon, NOW)[0];
 
   it("reads PM2.5 and PM10 and tags a reference monitor", () => {
-    const c = toCandidate(parsed, latest(7, 18.1, "2026-11-23T08:00:00Z", 40), KOCHI.lat, KOCHI.lon, NOW)!;
+    const c = toCandidate(parsed, latest(7, 18.1, "2026-11-23T08:00:00Z", 40), KOCHI, NOW)!;
     expect(c).toMatchObject({ name: "Eloor", monitor: true, pm25: 18.1, pm10: 40 });
     expect(c.km).toBeGreaterThan(10);
   });
   it("rejects a stale value, a negative one and an absurd one", () => {
-    expect(toCandidate(parsed, latest(7, 18, "2026-11-23T05:00:00Z"), KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
-    expect(toCandidate(parsed, latest(7, 18, "2026-11-24T00:00:00Z"), KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
-    expect(toCandidate(parsed, latest(7, -4), KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
-    expect(toCandidate(parsed, latest(7, 5000), KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
-    expect(toCandidate(parsed, latest(7, null), KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
+    expect(toCandidate(parsed, latest(7, 18, "2026-11-23T05:00:00Z"), KOCHI, NOW)).toBeNull();
+    expect(toCandidate(parsed, latest(7, 18, "2026-11-24T00:00:00Z"), KOCHI, NOW)).toBeNull();
+    expect(toCandidate(parsed, latest(7, -4), KOCHI, NOW)).toBeNull();
+    expect(toCandidate(parsed, latest(7, 5000), KOCHI, NOW)).toBeNull();
+    expect(toCandidate(parsed, latest(7, null), KOCHI, NOW)).toBeNull();
   });
   it("picks the freshest of several PM2.5 sensors at one location", () => {
     const twoSensors = { ...l, sensors: [...l.sensors, { id: 999, parameter: { name: "pm25", units: UG } }] };
@@ -105,12 +105,12 @@ describe("toCandidate", () => {
         { sensorsId: 999, value: 22, datetime: { utc: "2026-11-23T09:30:00Z" } },
       ],
     };
-    expect(toCandidate(p, raw, KOCHI.lat, KOCHI.lon, NOW)!.pm25).toBe(22);
+    expect(toCandidate(p, raw, KOCHI, NOW)!.pm25).toBe(22);
   });
   it("ignores readings from sensors that are not PM2.5 at this location", () => {
     const raw = { results: [{ sensorsId: 424242, value: 30, datetime: { utc: "2026-11-23T09:00:00Z" } }] };
-    expect(toCandidate(parsed, raw, KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
-    expect(toCandidate(parsed, "junk", KOCHI.lat, KOCHI.lon, NOW)).toBeNull();
+    expect(toCandidate(parsed, raw, KOCHI, NOW)).toBeNull();
+    expect(toCandidate(parsed, "junk", KOCHI, NOW)).toBeNull();
   });
 });
 
